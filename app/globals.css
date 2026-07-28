@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+  KRİTİK: Tailwind v4'te dark: utility'leri varsayılan olarak
+  prefers-color-scheme: dark medya sorgusunu kullanır.
+  Aşağıdaki @custom-variant ile bu davranış TAMAMEN devre dışı bırakılır.
+  Artık dark: sınıfları YALNIZCA <html class="dark"> olduğunda aktif olur.
+  Kullanıcının sistem teması ne olursa olsun Light Mode değişmez.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,15 +21,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Sadece html.dark olduğunda body'ye dark arka plan uygula */
+.dark body {
+  background: #0F172A;
+  color: #F8FAFC;
 }

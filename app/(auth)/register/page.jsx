@@ -164,7 +164,7 @@ export default function RegisterPage() {
         <ShaderBackground />
 
         <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1e293b]/70 p-8 rounded-3xl border border-white/50 dark:border-[#52525B]/50 shadow-xl">
-          <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#A78BFA] mb-2 drop-shadow-sm">Voia</h1>
+          <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-2 drop-shadow-sm">Voia</h1>
           <h2 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-4 drop-shadow-sm">Aramıza Katılın</h2>
           <p className="text-gray-800 dark:text-[#CBD5E1] font-medium mb-10 text-sm leading-relaxed">
             Kişisel ses asistanınızla tanışmaya çok az kaldı. Saniyeler içinde hesabınızı oluşturun ve hayatınızı sesinizle yönetmeye başlayın.
@@ -172,7 +172,7 @@ export default function RegisterPage() {
 
           <div className="space-y-6">
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#A78BFA] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
               </div>
               <div>
@@ -182,7 +182,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#A78BFA] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
               </div>
               <div>
@@ -211,7 +211,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 placeholder="Örn: Selin Aydın"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
@@ -222,7 +222,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 placeholder="isim@email.com"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
@@ -237,7 +237,7 @@ export default function RegisterPage() {
                   placeholder="En az 8 karakter"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] pl-4 pr-11 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 transition-colors"
+                  className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] pl-4 pr-11 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
                 />
                 {/* Göz İkonu */}
                 <button
@@ -284,7 +284,7 @@ export default function RegisterPage() {
                       ? 'border-red-300 focus:ring-red-200' 
                       : isPasswordMatch 
                       ? 'border-teal-300 dark:border-[#34D399] focus:ring-teal-200 dark:focus:ring-[#34D399]/20' 
-                      : 'border-gray-200 dark:border-[#52525B] focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20'
+                      : 'border-gray-200 dark:border-[#52525B] focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20'
                   }`}
                 />
                 {/* Göz İkonu */}
@@ -304,7 +304,7 @@ export default function RegisterPage() {
 
             <Link
               href="/"
-              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#A78BFA] dark:hover:bg-[#9370f5] text-white font-bold py-3 rounded-xl transition-colors mt-6 shadow-sm flex items-center justify-center"
+              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold py-3 rounded-xl transition-colors mt-6 shadow-sm flex items-center justify-center"
             >
               Kayıt Ol
             </Link>
@@ -331,7 +331,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-gray-500 dark:text-[#CBD5E1] mt-8">
             Zaten hesabınız var mı?{' '}
-            <Link href="/login" className="text-[#0f4c3a] dark:text-[#A78BFA] font-bold hover:underline">
+            <Link href="/login" className="text-[#0f4c3a] dark:text-[#00BBA7] font-bold hover:underline">
               Giriş Yap
             </Link>
           </p>

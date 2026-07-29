@@ -161,7 +161,7 @@ export default function LoginPage() {
 
         {/* İçerik (Animasyonun Üzerinde Durması İçin z-10, relative ve blur kullanıldı) */}
         <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1e293b]/70 p-8 rounded-3xl border border-white/50 dark:border-[#52525B]/50 shadow-xl">
-          <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#A78BFA] mb-2 drop-shadow-sm">Voia</h1>
+          <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-2 drop-shadow-sm">Voia</h1>
           <h2 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-4 drop-shadow-sm">Çok Dilli Kişisel Ses Asistanınız</h2>
           <p className="text-gray-800 dark:text-[#CBD5E1] font-medium mb-10 text-sm leading-relaxed">
             Voia ile hayatınızı sesinizle yönetin. 6 farklı dil desteğiyle notlar alın, hatırlatıcılar kurun ve aramalarınızı sadece konuşarak gerçekleştirin.
@@ -169,7 +169,7 @@ export default function LoginPage() {
 
           <div className="space-y-6">
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#A78BFA] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
               <div>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#A78BFA] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
               </div>
               <div>
@@ -189,7 +189,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#A78BFA] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
               </div>
               <div>
@@ -218,7 +218,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 placeholder="isim@email.com"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
@@ -227,20 +227,20 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide">
                   Ve Şifren?
                 </label>
-                <a href="#" className="text-xs text-gray-400 dark:text-[#71717A] hover:text-[#0f4c3a] dark:hover:text-[#A78BFA] transition-colors">
+                <a href="#" className="text-xs text-gray-400 dark:text-[#71717A] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors">
                   Unuttum
                 </a>
               </div>
               <input
                 type="password"
                 placeholder="••••••••"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
             <Link
               href="/"
-              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#A78BFA] dark:hover:bg-[#9370f5] text-white font-medium py-3 rounded-xl transition-colors mt-4 shadow-sm flex items-center justify-center"
+              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3 rounded-xl transition-colors mt-4 shadow-sm flex items-center justify-center"
             >
               Giriş Yap
             </Link>

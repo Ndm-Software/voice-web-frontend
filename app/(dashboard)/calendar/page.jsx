@@ -10,7 +10,7 @@ export default function CalendarPage() {
         {/* Takvim Üst Kontrolleri */}
         <div className="flex justify-between items-center mb-6 px-2">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-[#0f4c3a] dark:text-[#A78BFA]">Ekim 2023</h2>
+            <h2 className="text-2xl font-bold text-[#0f4c3a] dark:text-[#00BBA7]">Ekim 2023</h2>
             <div className="flex gap-2 text-gray-500 dark:text-[#71717A]">
               <button className="p-1 hover:bg-gray-50 dark:hover:bg-[#71717A]/20 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -25,7 +25,7 @@ export default function CalendarPage() {
           <div className="flex bg-gray-100 dark:bg-[#0F172A]/50 rounded-lg p-1">
             <button className="px-5 py-1.5 text-sm font-medium text-gray-500 dark:text-[#71717A] rounded-md hover:text-gray-800 dark:hover:text-[#CBD5E1]">Gün</button>
             <button className="px-5 py-1.5 text-sm font-medium text-gray-500 dark:text-[#71717A] rounded-md hover:text-gray-800 dark:hover:text-[#CBD5E1]">Hafta</button>
-            <button className="px-5 py-1.5 text-sm font-bold bg-white dark:bg-[#3F3F46] text-[#0f4c3a] dark:text-[#A78BFA] rounded-md shadow-sm">Ay</button>
+            <button className="px-5 py-1.5 text-sm font-bold bg-white dark:bg-[#3F3F46] text-[#0f4c3a] dark:text-[#00BBA7] rounded-md shadow-sm">Ay</button>
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export default function CalendarPage() {
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">3</div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right flex flex-col items-end">
               <span>4</span>
-              <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#A78BFA] rounded-full mt-auto mb-1"></div>
+              <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full mt-auto mb-1"></div>
             </div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">5</div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">6</div>
@@ -67,11 +67,11 @@ export default function CalendarPage() {
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">9</div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">10</div>
             {/* Seçili Gün: 11 */}
-            <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative font-bold text-right flex flex-col items-end bg-teal-50/50 dark:bg-[#A78BFA]/10">
-              <span className="text-[#0f4c3a] dark:text-[#A78BFA]">11</span>
+            <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative font-bold text-right flex flex-col items-end bg-teal-50/50 dark:bg-[#00BBA7]/10">
+              <span className="text-[#0f4c3a] dark:text-[#00BBA7]">11</span>
               <div className="w-full mt-auto space-y-1 mb-1">
-                <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#A78BFA] rounded-full"></div>
-                <div className="w-full h-1.5 bg-teal-600 dark:bg-[#A78BFA]/60 rounded-full opacity-80"></div>
+                <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full"></div>
+                <div className="w-full h-1.5 bg-teal-600 dark:bg-[#00BBA7]/60 rounded-full opacity-80"></div>
               </div>
             </div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">12</div>
@@ -83,7 +83,7 @@ export default function CalendarPage() {
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">16</div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right flex flex-col items-end">
               <span>17</span>
-              <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#A78BFA] rounded-full mt-auto mb-1"></div>
+              <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full mt-auto mb-1"></div>
             </div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">18</div>
             <div className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 relative text-gray-800 dark:text-[#CBD5E1] text-sm font-medium text-right">19</div>
@@ -106,7 +106,7 @@ export default function CalendarPage() {
       {/* SAĞ BÖLÜM: Günün Detayları */}
       <div className="flex-1 flex flex-col">
         <div className="mb-6">
-          <h3 className="text-xl font-bold text-[#0f4c3a] dark:text-[#A78BFA]">11 Ekim, Çarşamba</h3>
+          <h3 className="text-xl font-bold text-[#0f4c3a] dark:text-[#00BBA7]">11 Ekim, Çarşamba</h3>
           <p className="text-gray-500 dark:text-[#CBD5E1] text-sm mt-1">3 Hatırlatıcı Planlandı</p>
         </div>
 
@@ -115,7 +115,7 @@ export default function CalendarPage() {
           {/* Hatırlatıcı Kartı 1 */}
           <div className="bg-white dark:bg-[#3F3F46] rounded-xl p-5 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
             <div className="flex justify-between items-start mb-3">
-              <span className="bg-[#0f4c3a] dark:bg-[#A78BFA] text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide">İŞ</span>
+              <span className="bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide">İŞ</span>
               <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">09:30</span>
             </div>
             <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2">Marketing Sync Call</h4>
@@ -141,7 +141,7 @@ export default function CalendarPage() {
           {/* Hatırlatıcı Kartı 3 */}
           <div className="bg-white dark:bg-[#3F3F46] rounded-xl p-5 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
             <div className="flex justify-between items-start mb-3">
-              <span className="bg-[#0f4c3a] dark:bg-[#A78BFA] text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide">İŞ</span>
+              <span className="bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide">İŞ</span>
               <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">16:45</span>
             </div>
             <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2">Almanca Brief Çevirileri</h4>
@@ -154,12 +154,12 @@ export default function CalendarPage() {
         </div>
 
         {/* Voia Dinliyor Mini Kartı */}
-        <div className="bg-[#e2f1ec] dark:bg-[#A78BFA]/10 rounded-xl p-5 flex items-center mt-6 shadow-sm dark:shadow-none border border-teal-100 dark:border-[#A78BFA]/30">
-          <div className="w-12 h-12 bg-[#0f4c3a] dark:bg-[#A78BFA] rounded-full flex items-center justify-center shrink-0 mr-4 shadow-md">
+        <div className="bg-[#e2f1ec] dark:bg-[#00BBA7]/10 rounded-xl p-5 flex items-center mt-6 shadow-sm dark:shadow-none border border-teal-100 dark:border-[#00BBA7]/30">
+          <div className="w-12 h-12 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full flex items-center justify-center shrink-0 mr-4 shadow-md">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
           </div>
           <div>
-            <h4 className="font-bold text-[#0f4c3a] dark:text-[#A78BFA] text-sm">Voia dinliyor...</h4>
+            <h4 className="font-bold text-[#0f4c3a] dark:text-[#00BBA7] text-sm">Voia dinliyor...</h4>
             <p className="text-[#0f4c3a] dark:text-[#CBD5E1] text-[12px] italic opacity-80 mt-0.5">"Bana bir hatırlatıcı eklememi söyle..."</p>
           </div>
         </div>

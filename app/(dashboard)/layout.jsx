@@ -1,120 +1,164 @@
-"use client"; // URL'i okuyabilmek için bileşeni Client Component yapıyoruz
+"use client";
 
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }) {
-  const pathname = usePathname(); // Şu an bulunduğumuz URL'i alıyoruz (Örn: '/' veya '/calendar')
+  const pathname = usePathname();
+  const [isDark, setIsDark] = useState(false);
 
-  // Linklerin aktif olup olmamasına göre stilini belirleyen yardımcı fonksiyon
-  const getLinkStyle = (path) => {
-    if (pathname === path) {
-      // Aktif sekme stili (Koyu yeşil yazı, beyaz arka plan, sol yeşil çizgi)
-      return "flex items-center px-4 py-3.5 bg-white dark:bg-[#3F3F46] text-[#0f4c3a] dark:text-[#A78BFA] font-bold rounded-lg shadow-sm border-l-4 border-[#0f4c3a] dark:border-[#A78BFA] transition-all";
+  // Sayfa ilk yüklendiğinde kullanıcının tercih ettiği temayı (varsa) getir
+  useEffect(() => {
+    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      setIsDark(true);
+    } else {
+      document.documentElement.classList.remove('dark');
+      setIsDark(false);
     }
-    // Pasif sekme stili (Gri yazı, hover efekti, transparan sol çizgi)
-    return "flex items-center px-4 py-3.5 text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-100 dark:hover:bg-[#3F3F46]/60 hover:text-gray-800 dark:hover:text-[#F8FAFC] rounded-lg font-medium transition-all border-l-4 border-transparent";
+  }, []);
+
+  // Tema Değiştirme Fonksiyonu
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
   };
 
-  return (
-    <div className="flex h-screen bg-[#f4f7f6] dark:bg-[#0F172A] font-sans text-gray-800 dark:text-[#F8FAFC]">
-      
-      {/* SOL MENÜ (SIDEBAR) */}
-      <aside className="w-[260px] bg-[#f8fcfb] dark:bg-[#1e293b] border-r border-gray-200 dark:border-[#52525B] flex flex-col justify-between shrink-0">
-        <div>
-          {/* Logo Alanı */}
-          <div className="p-8 pb-6">
-            <h1 className="text-3xl font-bold text-[#0f4c3a] dark:text-[#A78BFA] tracking-tight">Voia</h1>
-            <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] font-medium mt-1">Kişisel Sesli Asistan</p>
-          </div>
+  const menuItems = [
+    { name: 'Panel', path: '/', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+    { name: 'Takvim', path: '/calendar', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { name: 'Geçmiş', path: '/history', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+    { name: 'Sessiz Saatler', path: '/quiet-hours', icon: 'M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z' },
+    { name: 'Profil', path: '/profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
+  ];
 
-          {/* Navigasyon Linkleri */}
-          <nav className="flex flex-col gap-1 px-4 mt-4">
-            
-            <Link href="/" className={getLinkStyle('/')}>
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-              Panel
-            </Link>
-            
-            <Link href="/calendar" className={getLinkStyle('/calendar')}>
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-              Takvim
-            </Link>
-            
-            <Link href="/history" className={getLinkStyle('/history')}>
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              Geçmiş
-            </Link>
-            
-            <Link href="/quiet-hours" className={getLinkStyle('/quiet-hours')}>
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
-              Sessiz Saatler
-            </Link>
-            
-            <Link href="/profile" className={getLinkStyle('/profile')}>
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-              Profil
-            </Link>
-          </nav>
-        </div>
+  return (
+    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-300">
+      
+      {/* Sol Menü (Sidebar) */}
+      <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col transition-colors duration-300">
         
-        {/* Yeni Hatırlatıcı Butonu (Sol Alt) */}
+        {/* Logo Alanı */}
+        <div className="p-8">
+          <h1 className="text-3xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] tracking-tight">Voia</h1>
+          <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-1 tracking-wider uppercase">Kişisel Sesli Asistan</p>
+        </div>
+
+        {/* Menü Linkleri */}
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.path || (item.path !== '/' && pathname?.startsWith(item.path));
+            return (
+              <Link
+                key={item.name}
+                href={item.path}
+                // BURASI GÜNCELLENDİ: focus:outline-none eklendi ve border mantığı düzeltildi
+                className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${
+                  isActive 
+                    ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm' 
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                <svg className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'text-gray-400 dark:text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon}></path>
+                </svg>
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Yeni Hatırlatıcı Butonu */}
         <div className="p-6">
           <Link 
             href="/calendar/new" 
-            className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#A78BFA] dark:hover:bg-[#9370f5] text-white font-medium py-3.5 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+            className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3.5 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
             Yeni Hatırlatıcı Oluştur
           </Link>
         </div>
-      </aside>
+      </div>
 
-      {/* SAĞ TARAF (Üst Bar + Sayfa İçeriği) */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Sağ Taraf - İçerik Alanı */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
-        {/* ÜST BAR (TOPBAR) */}
-        <header className="h-[88px] flex items-center justify-between px-10 border-b border-gray-200 dark:border-[#52525B] bg-[#f4f7f6] dark:bg-[#0F172A] shrink-0">
+        {/* TOPBAR */}
+        <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-10 shrink-0 transition-colors duration-300">
           
           {/* Arama Çubuğu */}
-          <div className="relative w-full max-w-md">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-[#71717A]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input
-              type="text"
-              placeholder="Hatırlatıcılarda ara..."
-              className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#A78BFA]/20 shadow-sm"
+          <div className="w-[450px] relative">
+            <input 
+              type="text" 
+              placeholder="Hatırlatıcılarda ara..." 
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl text-sm text-gray-800 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/20 transition-all placeholder-gray-400"
             />
+            <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
 
-          {/* Sağ Üst Araçlar */}
           <div className="flex items-center gap-6">
-            <div className="flex gap-3 text-sm font-semibold">
-              <button className="text-[#0f4c3a] dark:text-[#A78BFA]">TR</button>
-              <button className="text-gray-400 dark:text-[#71717A] hover:text-gray-600 dark:hover:text-[#CBD5E1]">EN</button>
-              <button className="text-gray-400 dark:text-[#71717A] hover:text-gray-600 dark:hover:text-[#CBD5E1]">DE</button>
+            
+            {/* Dil Seçimi */}
+            <div className="flex items-center gap-3 text-xs font-bold text-gray-400 dark:text-gray-500">
+              <button className="text-[#0f4c3a] dark:text-[#00BBA7]">TR</button>
+              <button className="hover:text-gray-800 dark:hover:text-gray-200 transition-colors">EN</button>
             </div>
             
-            <div className="flex items-center gap-5 ml-4">
-              <button className="relative text-gray-500 dark:text-[#CBD5E1] hover:text-gray-700 dark:hover:text-[#F8FAFC]">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 border-2 border-[#f4f7f6] dark:border-[#0F172A] rounded-full"></span>
+            <div className="flex items-center gap-5 border-l border-gray-200 dark:border-gray-700 pl-6">
+              
+              {/* Bildirim İkonu */}
+              <button className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
               </button>
-              <button className="text-gray-500 dark:text-[#CBD5E1] hover:text-gray-700 dark:hover:text-[#F8FAFC]">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              </button>
-              <div className="w-9 h-9 bg-gray-200 dark:bg-[#3F3F46] rounded-full overflow-hidden border-2 border-white dark:border-[#52525B] shadow-sm cursor-pointer">
-                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
+
+              {/* TEMA DEĞİŞTİRME BUTONU (Custom Toggle Switch) */}
+              <button 
+                onClick={toggleTheme} 
+                className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
+                title={isDark ? "Açık Moda Geç" : "Koyu Moda Geç"}
+              >
+                {/* Arka Plan İkonları (Sabit ve Soluk) */}
+                <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                  <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 </div>
+
+                {/* Hareketli Yuvarlak (Thumb) */}
+                <div className={`relative w-6 h-6 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 z-10 ${isDark ? 'translate-x-8' : 'translate-x-0'}`}>
+                  {isDark ? (
+                    // Koyu Mod Aktifken İçerideki İkon
+                    <svg className="w-3.5 h-3.5 text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                  ) : (
+                    // Açık Mod Aktifken İçerideki İkon
+                    <svg className="w-3.5 h-3.5 text-[#0f4c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                  )}
+                </div>
+              </button>
+
+              {/* Profil Resmi */}
+              <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm">
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
+              </div>
             </div>
+
           </div>
         </header>
 
-        {/* ANA İÇERİK ALANI */}
+        {/* Ana İçerik Yeri */}
         <main className="flex-1 overflow-y-auto p-10">
           {children}
         </main>
-        
       </div>
+
     </div>
   );
 }

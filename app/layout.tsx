@@ -24,22 +24,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    <html 
+      lang="tr" 
+      // Sınıfların ve hydration ayarların aynen kalsın
+      suppressHydrationWarning
     >
       <head>
-        {/* FOUC önleme: sayfa render edilmeden önce localStorage'dan tema okunur */}
+        {/* BU SCRIPT'İ EKLİYORUZ: React yüklenmeden önce çalışıp temayı kilitler */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('voia-theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`,
+            __html: `
+              try {
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+      <body>
+        {children}
       </body>
     </html>
   );

@@ -172,12 +172,29 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Toast
+  const [toast, setToast] = useState(null);
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
   // Şifre Eşleşme Durumu
   const isPasswordMatch = confirmPassword.length > 0 && password === confirmPassword;
   const isPasswordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-[#1A1A1A] font-sans transition-colors duration-500">
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {toast}
+        </div>
+      )}
       
       {/* SOL TARAF: Biraz daha açık, nötr koyu gri olan #1E1E1E eklendi */}
       <div className="w-1/2 relative p-16 flex flex-col justify-center overflow-hidden bg-gray-50 dark:bg-[#1E1E1E] transition-colors duration-500">
@@ -338,6 +355,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
+            onClick={() => showToast('Google ile kayıt yakında aktif olacak.')}
             className="w-full bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-[#27272A] text-gray-700 dark:text-[#F8FAFC] font-medium py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

@@ -2,13 +2,34 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function NewReminderPage() {
+  const router = useRouter();
   const [notificationTime, setNotificationTime] = useState('Zamanında');
   const [callTime, setCallTime] = useState('Zamanında');
+  const [toast, setToast] = useState(null);
+
+  const handleSave = () => {
+    setToast('Hatırlatıcı başarıyla kaydedildi!');
+    setTimeout(() => {
+      setToast(null);
+      router.push('/calendar');
+    }, 1800);
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+          {toast}
+        </div>
+      )}
       
       {/* Sayfa İçeriği: Ana Kart */}
       <div className="bg-white dark:bg-[#3F3F46] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-[#52525B] transition-colors duration-300">
@@ -177,6 +198,7 @@ export default function NewReminderPage() {
             </Link>
             <button
               type="button"
+              onClick={handleSave}
               className="px-8 py-3.5 bg-[#0f4c3a] dark:bg-[#00BBA7] hover:bg-[#0a3629] dark:hover:bg-[#009F8E] text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
             >
               Hatırlatıcıyı Kaydet

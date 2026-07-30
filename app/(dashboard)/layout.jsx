@@ -1,12 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isDark, setIsDark] = useState(false);
+  const [activeLang, setActiveLang] = useState('TR');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Bildirim paneli ve Profil Menüsü dışına tıklayınca kapat
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Sayfa ilk yüklendiğinde kullanıcının tercih ettiği temayı (varsa) getir
   useEffect(() => {
@@ -108,17 +129,60 @@ export default function DashboardLayout({ children }) {
             
             {/* Dil Seçimi */}
             <div className="flex items-center gap-3 text-xs font-bold text-gray-400 dark:text-gray-500">
-              <button className="text-[#0f4c3a] dark:text-[#00BBA7]">TR</button>
-              <button className="hover:text-gray-800 dark:hover:text-gray-200 transition-colors">EN</button>
+              <button
+                onClick={() => setActiveLang('TR')}
+                className={`transition-colors ${activeLang === 'TR' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'hover:text-gray-800 dark:hover:text-gray-200'}`}
+              >TR</button>
+              <button
+                onClick={() => setActiveLang('EN')}
+                className={`transition-colors ${activeLang === 'EN' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'hover:text-gray-800 dark:hover:text-gray-200'}`}
+              >EN</button>
             </div>
             
             <div className="flex items-center gap-5 border-l border-gray-200 dark:border-gray-700 pl-6">
               
               {/* Bildirim İkonu */}
-              <button className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
-              </button>
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => setShowNotifications((p) => !p)}
+                  className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative"
+                  aria-label="Bildirimleri aç"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
+                </button>
+
+                {/* Bildirim Dropdown Paneli */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-10 w-80 bg-white dark:bg-[#3F3F46] rounded-2xl shadow-xl border border-gray-100 dark:border-[#52525B] z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#52525B]">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">Bildirimler</h3>
+                      <span className="text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">2 yeni</span>
+                    </div>
+                    <div className="divide-y divide-gray-50 dark:divide-[#52525B] max-h-72 overflow-y-auto">
+                      {[
+                        { icon: '🔔', title: 'Doktor Randevusu', sub: 'Bugün 14:30 – 2 saat sonra', unread: true },
+                        { icon: '📞', title: 'Cevapsız Arama', sub: 'Annem – 14:32', unread: true },
+                        { icon: '✅', title: 'Günlük Özet Hazır', sub: 'Yapay zeka analiziniz hazır', unread: false },
+                      ].map((n, i) => (
+                        <div key={i} className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-[#71717A]/10 cursor-pointer transition-colors ${n.unread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''}`}>
+                          <span className="text-xl shrink-0">{n.icon}</span>
+                          <div>
+                            <p className={`text-sm ${n.unread ? 'font-bold text-gray-800 dark:text-[#F8FAFC]' : 'font-medium text-gray-600 dark:text-[#CBD5E1]'}`}>{n.title}</p>
+                            <p className="text-[12px] text-gray-400 dark:text-[#71717A] mt-0.5">{n.sub}</p>
+                          </div>
+                          {n.unread && <div className="w-2 h-2 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full shrink-0 mt-1.5 ml-auto" />}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-5 py-3 border-t border-gray-100 dark:border-[#52525B]">
+                      <Link href="/history" onClick={() => setShowNotifications(false)} className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline">
+                        Tüm geçmişi görüntüle →
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* TEMA DEĞİŞTİRME BUTONU (Custom Toggle Switch) */}
               <button 
@@ -144,9 +208,34 @@ export default function DashboardLayout({ children }) {
                 </div>
               </button>
 
-              {/* Profil Resmi */}
-              <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm">
-                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
+              {/* Profil Menüsü */}
+              <div ref={profileRef} className="relative">
+                <button 
+                  onClick={() => setShowProfileMenu((p) => !p)} 
+                  className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm hover:ring-2 hover:ring-[#0f4c3a] dark:hover:ring-[#00BBA7] transition-all block focus:outline-none"
+                >
+                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
+                </button>
+
+                {/* Profil Dropdown */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#3F3F46] rounded-xl shadow-xl border border-gray-100 dark:border-[#52525B] z-50 overflow-hidden py-1">
+                    <button
+                      onClick={() => { setShowProfileMenu(false); router.push('/login'); }}
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                      Hesaptan Çıkış
+                    </button>
+                    <button
+                      onClick={() => { setShowProfileMenu(false); setShowDeleteModal(true); }}
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      Hesabı Sil
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -158,6 +247,32 @@ export default function DashboardLayout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Hesabı Sil Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
+          <div className="bg-white dark:bg-[#27272A] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-[#3F3F46] p-6 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-2">Hesabı Sil</h3>
+            <p className="text-sm text-gray-500 dark:text-[#CBD5E1] mb-6 leading-relaxed">
+              Hesabınızı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-[#CBD5E1] bg-gray-100 dark:bg-[#3F3F46] hover:bg-gray-200 dark:hover:bg-[#52525B] transition-colors focus:outline-none"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => { setShowDeleteModal(false); router.push('/login'); }}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-colors focus:outline-none shadow-sm"
+              >
+                Hesabı Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

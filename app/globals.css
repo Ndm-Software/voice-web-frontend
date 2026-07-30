@@ -1,12 +1,4 @@
 @import "tailwindcss";
-
-/*
-  KRİTİK: Tailwind v4'te dark: utility'leri varsayılan olarak
-  prefers-color-scheme: dark medya sorgusunu kullanır.
-  Aşağıdaki @custom-variant ile bu davranış TAMAMEN devre dışı bırakılır.
-  Artık dark: sınıfları YALNIZCA <html class="dark"> olduğunda aktif olur.
-  Kullanıcının sistem teması ne olursa olsun Light Mode değişmez.
-*/
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

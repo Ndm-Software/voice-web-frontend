@@ -340,7 +340,7 @@ export default function RegisterPage() {
             </div>
 
             <Link
-              href="/"
+              href="/panel"
               className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold py-3 rounded-xl transition-colors mt-6 shadow-sm flex items-center justify-center"
             >
               Kayıt Ol

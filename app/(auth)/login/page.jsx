@@ -268,7 +268,7 @@ export default function LoginPage() {
             </div>
 
             <Link
-              href="/"
+              href="/panel"
               className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3 rounded-xl transition-colors mt-4 shadow-sm flex items-center justify-center"
             >
               Giriş Yap

@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import Link from 'next/link';
 
-// WebGL Animasyon Bileşeni (Arka Plan İçin)
+// WebGL Animasyon Bileşeni (Açık/Koyu Moda Duyarlı)
 const ShaderBackground = () => {
   const canvasRef = useRef(null);
 
@@ -14,7 +14,6 @@ const ShaderBackground = () => {
     let animationFrameId;
     let resizeObserver;
 
-    // Canvas boyutunu kapsayıcıya göre ayarla
     function syncSize() {
       const w = canvas.clientWidth || 1280;
       const h = canvas.clientHeight || 720;
@@ -45,8 +44,8 @@ varying vec2 v_texCoord;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_mouse;
+uniform float u_isDark; // 0.0: Açık Mod, 1.0: Koyu Mod
 
-// Simulating audio reaction using time and sine waves
 float getAudioAmplitude() {
     return 0.5 + 0.5 * sin(u_time * 2.0);
 }
@@ -58,10 +57,20 @@ void main() {
 
     float amp = getAudioAmplitude();
     
-    // Voia Brand Color: #0d6e5c (approx vec3(0.05, 0.43, 0.36))
-    vec3 color1 = vec3(0.05, 0.43, 0.36);
-    vec3 color2 = vec3(0.08, 0.58, 0.48);
-    vec3 bgColor = vec3(0.98, 0.98, 0.97); // Surface color
+    // AÇIK MOD RENKLERİ (Orijinal)
+    vec3 light_color1 = vec3(0.05, 0.43, 0.36);
+    vec3 light_color2 = vec3(0.08, 0.58, 0.48);
+    vec3 light_bgColor = vec3(0.98, 0.98, 0.97);
+
+    // KOYU MOD RENKLERİ (Parlak Turkuaz ve #1E1E1E Nötr Koyu Gri Arka Plan)
+    vec3 dark_color1 = vec3(0.0, 0.73, 0.65); // #00BBA7
+    vec3 dark_color2 = vec3(0.1, 0.8, 0.7);
+    vec3 dark_bgColor = vec3(0.12, 0.12, 0.12);
+
+    // Temaya göre renk geçişi (mix)
+    vec3 color1 = mix(light_color1, dark_color1, u_isDark);
+    vec3 color2 = mix(light_color2, dark_color2, u_isDark);
+    vec3 bgColor = mix(light_bgColor, dark_bgColor, u_isDark);
 
     float wave = 0.0;
     for(float i = 0.0; i < 5.0; i++) {
@@ -72,12 +81,11 @@ void main() {
     }
     
     float dist = abs(centered_uv.y - wave * 0.5);
-    float glow = exp(-dist * 15.0);
+    float glow = exp(-dist * mix(15.0, 10.0, u_isDark));
     
     vec3 finalColor = mix(bgColor, mix(color1, color2, sin(u_time + uv.x) * 0.5 + 0.5), glow);
     
-    // Subtle gradient background
-    finalColor = mix(finalColor, bgColor, 0.3);
+    finalColor = mix(finalColor, bgColor, mix(0.3, 0.1, u_isDark));
 
     gl_FragColor = vec4(finalColor, 1.0);
 }`;
@@ -106,6 +114,7 @@ void main() {
     const uTime = gl.getUniformLocation(prog, 'u_time');
     const uRes = gl.getUniformLocation(prog, 'u_resolution');
     const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+    const uIsDark = gl.getUniformLocation(prog, 'u_isDark');
 
     let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
     
@@ -123,16 +132,20 @@ void main() {
     function render(t) {
       if (typeof ResizeObserver === 'undefined') syncSize();
       gl.viewport(0, 0, canvas.width, canvas.height);
+      
+      const isDark = document.documentElement.classList.contains('dark') ? 1.0 : 0.0;
+
       if (uTime) gl.uniform1f(uTime, t * 0.001);
       if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
       if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+      if (uIsDark) gl.uniform1f(uIsDark, isDark);
+
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       animationFrameId = requestAnimationFrame(render);
     }
     
     animationFrameId = requestAnimationFrame(render);
 
-    // Bileşen ekrandan kalktığında hafıza sızıntısını önlemek için temizleme (Cleanup)
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('mousemove', handleMouseMove);
@@ -151,58 +164,58 @@ void main() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex bg-white dark:bg-[#0F172A] font-sans">
+    <div className="min-h-screen flex bg-white dark:bg-[#1A1A1A] font-sans transition-colors duration-500">
       
-      {/* Sol Taraf: Animasyonlu Arka Plan ve Bilgi Alanı */}
-      <div className="w-1/2 relative p-16 flex flex-col justify-center overflow-hidden">
+      {/* SOL TARAF: Açık modda bg-gray-50, Koyu modda bg-[#1E1E1E] */}
+      <div className="w-1/2 relative p-16 flex flex-col justify-center overflow-hidden bg-gray-50 dark:bg-[#1E1E1E] transition-colors duration-500">
         
-        {/* Hareketli Shader Arka Planı (En Altta) */}
+        {/* Hareketli Shader Arka Planı (Açık/Koyu Moda Otomatik Uyar) */}
         <ShaderBackground />
 
-        {/* İçerik (Animasyonun Üzerinde Durması İçin z-10, relative ve blur kullanıldı) */}
-        <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1e293b]/70 p-8 rounded-3xl border border-white/50 dark:border-[#52525B]/50 shadow-xl">
+        {/* İçerik Kartı */}
+        <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1A1A1A]/40 p-8 rounded-3xl border border-white/50 dark:border-white/10 shadow-xl dark:shadow-2xl transition-all duration-500">
           <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-2 drop-shadow-sm">Voia</h1>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-4 drop-shadow-sm">Çok Dilli Kişisel Ses Asistanınız</h2>
-          <p className="text-gray-800 dark:text-[#CBD5E1] font-medium mb-10 text-sm leading-relaxed">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 drop-shadow-sm">Çok Dilli Kişisel Ses Asistanınız</h2>
+          <p className="text-gray-800 dark:text-gray-300 font-medium mb-10 text-sm leading-relaxed">
             Voia ile hayatınızı sesinizle yönetin. 6 farklı dil desteğiyle notlar alın, hatırlatıcılar kurun ve aramalarınızı sadece konuşarak gerçekleştirin.
           </p>
 
           <div className="space-y-6">
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-white/5 backdrop-blur-sm transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-[#F8FAFC] text-sm">Akıllı Hatırlatıcılar</h3>
-                <p className="text-gray-700 dark:text-[#CBD5E1] font-medium text-xs mt-1">Zamanı sesinizle yönetin.</p>
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">Akıllı Hatırlatıcılar</h3>
+                <p className="text-gray-700 dark:text-gray-400 font-medium text-xs mt-1">Zamanı sesinizle yönetin.</p>
               </div>
             </div>
 
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-white/5 backdrop-blur-sm transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-[#F8FAFC] text-sm">6 Dil Desteği</h3>
-                <p className="text-gray-700 dark:text-[#CBD5E1] font-medium text-xs mt-1">Global iletişim gücü.</p>
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">6 Dil Desteği</h3>
+                <p className="text-gray-700 dark:text-gray-400 font-medium text-xs mt-1">Global iletişim gücü.</p>
               </div>
             </div>
 
             <div className="flex items-start">
-              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-[#3F3F46]/80 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-[#52525B]/50 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-white/5 backdrop-blur-sm transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-[#F8FAFC] text-sm">Sesli Aramalar</h3>
-                <p className="text-gray-700 dark:text-[#CBD5E1] font-medium text-xs mt-1">Eller serbest kontrol.</p>
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">Sesli Aramalar</h3>
+                <p className="text-gray-700 dark:text-gray-400 font-medium text-xs mt-1">Eller serbest kontrol.</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sağ Taraf: Giriş Formu */}
-      <div className="w-1/2 bg-white dark:bg-[#1e293b] p-16 flex flex-col justify-center relative">
+      {/* SAĞ TARAF: Giriş Formu (Yumuşatılmış Antrasit Gri #1A1A1A) */}
+      <div className="w-1/2 bg-white dark:bg-[#1A1A1A] p-16 flex flex-col justify-center relative transition-colors duration-500">
         <div className="max-w-sm mx-auto w-full">
           
           <div className="text-center mb-10">
@@ -213,19 +226,19 @@ export default function LoginPage() {
           <form className="space-y-6">
             <div>
               <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-2">
-                E-Postan Nedir?
+                E-Posta adresi
               </label>
               <input
                 type="email"
                 placeholder="isim@email.com"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#27272A] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide">
-                  Ve Şifren?
+                  Şifre
                 </label>
                 <a href="#" className="text-xs text-gray-400 dark:text-[#71717A] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors">
                   Unuttum
@@ -234,7 +247,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 placeholder="••••••••"
-                className="w-full bg-gray-50 dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+                className="w-full bg-gray-50 dark:bg-[#27272A] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
@@ -247,14 +260,14 @@ export default function LoginPage() {
           </form>
 
           <div className="my-8 flex items-center">
-            <div className="flex-grow border-t border-gray-200 dark:border-[#52525B]"></div>
+            <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
             <span className="mx-4 text-xs text-gray-400 dark:text-[#71717A] font-medium">VEYA</span>
-            <div className="flex-grow border-t border-gray-200 dark:border-[#52525B]"></div>
+            <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
           </div>
 
           <button
             type="button"
-            className="w-full bg-white dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] hover:bg-gray-50 dark:hover:bg-[#3F3F46]/80 text-gray-700 dark:text-[#F8FAFC] font-medium py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+            className="w-full bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-[#323235] text-gray-700 dark:text-[#F8FAFC] font-medium py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

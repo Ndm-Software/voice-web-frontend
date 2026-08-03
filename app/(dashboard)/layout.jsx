@@ -62,10 +62,10 @@ export default function DashboardLayout({ children }) {
   ];
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-300">
+    <div className="min-h-screen flex bg-gray-50 dark:bg-[#1A1A1A] font-sans transition-colors duration-300">
       
       {/* Sol Menü (Sidebar) */}
-      <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col transition-colors duration-300">
+      <div className="w-64 bg-white dark:bg-[#1A1A1A] border-r border-gray-100 dark:border-white/10 flex flex-col transition-colors duration-300">
         
         {/* Logo Alanı */}
         <div className="p-8">
@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }) {
                 className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${
                   isActive 
                     ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm' 
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 <svg className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'text-gray-400 dark:text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,14 +113,14 @@ export default function DashboardLayout({ children }) {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* TOPBAR */}
-        <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-10 shrink-0 transition-colors duration-300">
+        <header className="h-20 bg-white dark:bg-[#1A1A1A] border-b border-gray-100 dark:border-white/10 flex items-center justify-between px-10 shrink-0 transition-colors duration-300">
           
           {/* Arama Çubuğu */}
           <div className="w-[450px] relative">
             <input 
               type="text" 
               placeholder="Hatırlatıcılarda ara..." 
-              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl text-sm text-gray-800 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/20 transition-all placeholder-gray-400"
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-[#27272A] border-none rounded-2xl text-sm text-gray-800 dark:text-[#F8FAFC] font-medium focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/20 transition-all placeholder-gray-400 dark:placeholder-[#71717A]"
             />
             <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
@@ -139,7 +139,7 @@ export default function DashboardLayout({ children }) {
               >EN</button>
             </div>
             
-            <div className="flex items-center gap-5 border-l border-gray-200 dark:border-gray-700 pl-6">
+            <div className="flex items-center gap-5 border-l border-gray-200 dark:border-white/10 pl-6">
               
               {/* Bildirim İkonu */}
               <div ref={notifRef} className="relative">
@@ -149,23 +149,23 @@ export default function DashboardLayout({ children }) {
                   aria-label="Bildirimleri aç"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#1A1A1A]"></span>
                 </button>
 
                 {/* Bildirim Dropdown Paneli */}
                 {showNotifications && (
-                  <div className="absolute right-0 top-10 w-80 bg-white dark:bg-[#3F3F46] rounded-2xl shadow-xl border border-gray-100 dark:border-[#52525B] z-50 overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#52525B]">
+                  <div className="absolute right-0 top-10 w-80 bg-white dark:bg-[#27272A] rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
                       <h3 className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">Bildirimler</h3>
                       <span className="text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">2 yeni</span>
                     </div>
-                    <div className="divide-y divide-gray-50 dark:divide-[#52525B] max-h-72 overflow-y-auto">
+                    <div className="divide-y divide-gray-50 dark:divide-white/10 max-h-72 overflow-y-auto">
                       {[
                         { icon: '🔔', title: 'Doktor Randevusu', sub: 'Bugün 14:30 – 2 saat sonra', unread: true },
                         { icon: '📞', title: 'Cevapsız Arama', sub: 'Annem – 14:32', unread: true },
                         { icon: '✅', title: 'Günlük Özet Hazır', sub: 'Yapay zeka analiziniz hazır', unread: false },
                       ].map((n, i) => (
-                        <div key={i} className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-[#71717A]/10 cursor-pointer transition-colors ${n.unread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''}`}>
+                        <div key={i} className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${n.unread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''}`}>
                           <span className="text-xl shrink-0">{n.icon}</span>
                           <div>
                             <p className={`text-sm ${n.unread ? 'font-bold text-gray-800 dark:text-[#F8FAFC]' : 'font-medium text-gray-600 dark:text-[#CBD5E1]'}`}>{n.title}</p>
@@ -175,7 +175,7 @@ export default function DashboardLayout({ children }) {
                         </div>
                       ))}
                     </div>
-                    <div className="px-5 py-3 border-t border-gray-100 dark:border-[#52525B]">
+                    <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10">
                       <Link href="/history" onClick={() => setShowNotifications(false)} className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline">
                         Tüm geçmişi görüntüle →
                       </Link>
@@ -187,7 +187,7 @@ export default function DashboardLayout({ children }) {
               {/* TEMA DEĞİŞTİRME BUTONU (Custom Toggle Switch) */}
               <button 
                 onClick={toggleTheme} 
-                className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
+                className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-[#27272A] rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
                 title={isDark ? "Açık Moda Geç" : "Koyu Moda Geç"}
               >
                 {/* Arka Plan İkonları (Sabit ve Soluk) */}
@@ -197,7 +197,7 @@ export default function DashboardLayout({ children }) {
                 </div>
 
                 {/* Hareketli Yuvarlak (Thumb) */}
-                <div className={`relative w-6 h-6 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 z-10 ${isDark ? 'translate-x-8' : 'translate-x-0'}`}>
+                <div className={`relative w-6 h-6 bg-white dark:bg-[#3F3F46] rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 z-10 ${isDark ? 'translate-x-8' : 'translate-x-0'}`}>
                   {isDark ? (
                     // Koyu Mod Aktifken İçerideki İkon
                     <svg className="w-3.5 h-3.5 text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
@@ -212,17 +212,17 @@ export default function DashboardLayout({ children }) {
               <div ref={profileRef} className="relative">
                 <button 
                   onClick={() => setShowProfileMenu((p) => !p)} 
-                  className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm hover:ring-2 hover:ring-[#0f4c3a] dark:hover:ring-[#00BBA7] transition-all block focus:outline-none"
+                  className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-white/10 cursor-pointer shadow-sm hover:ring-2 hover:ring-[#0f4c3a] dark:hover:ring-[#00BBA7] transition-all block focus:outline-none"
                 >
                   <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
                 </button>
 
                 {/* Profil Dropdown */}
                 {showProfileMenu && (
-                  <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#3F3F46] rounded-xl shadow-xl border border-gray-100 dark:border-[#52525B] z-50 overflow-hidden py-1">
+                  <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#27272A] rounded-xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden py-1">
                     <button
                       onClick={() => { setShowProfileMenu(false); router.push('/login'); }}
-                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10 transition-colors flex items-center"
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                       Hesaptan Çıkış
@@ -251,7 +251,7 @@ export default function DashboardLayout({ children }) {
       {/* Hesabı Sil Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-[#27272A] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-[#3F3F46] p-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#27272A] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 p-6 animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-2">Hesabı Sil</h3>
             <p className="text-sm text-gray-500 dark:text-[#CBD5E1] mb-6 leading-relaxed">
               Hesabınızı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
@@ -259,7 +259,7 @@ export default function DashboardLayout({ children }) {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-[#CBD5E1] bg-gray-100 dark:bg-[#3F3F46] hover:bg-gray-200 dark:hover:bg-[#52525B] transition-colors focus:outline-none"
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-[#CBD5E1] bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 dark:hover:bg-white/5 transition-colors focus:outline-none"
               >
                 İptal
               </button>

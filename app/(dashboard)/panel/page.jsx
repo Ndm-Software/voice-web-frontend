@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
       {/* Üst İstatistik Kartları */}
       <div className="grid grid-cols-3 gap-6 mb-10">
-        <Link href="/calendar" className="bg-white dark:bg-[#3F3F46] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-[#52525B] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
+        <Link href="/calendar" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -57,7 +57,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        <Link href="/history" className="bg-white dark:bg-[#3F3F46] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-[#52525B] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
+        <Link href="/history" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -69,7 +69,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        <Link href="/quiet-hours" className="bg-white dark:bg-[#3F3F46] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-[#52525B] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
+        <Link href="/quiet-hours" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-[#71717A]/20 flex items-center justify-center text-gray-400 dark:text-[#CBD5E1] mr-4 border border-gray-100 dark:border-[#52525B]">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
@@ -104,7 +104,7 @@ export default function DashboardPage() {
             {/* Hatırlatıcı 1 */}
             <Link
               href="/calendar"
-              className="bg-white dark:bg-[#3F3F46] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-[#52525B] relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
+              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
             >
               <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
               <div className="pl-12">
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             {/* Hatırlatıcı 2 */}
             <Link
               href="/calendar"
-              className="bg-white dark:bg-[#3F3F46] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-[#52525B] relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
+              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
             >
               <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
               <div className="pl-12">
@@ -128,7 +128,7 @@ export default function DashboardPage() {
             {/* Hatırlatıcı 3 */}
             <Link
               href="/calendar"
-              className="bg-white dark:bg-[#3F3F46] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-[#52525B] relative overflow-hidden h-[76px] opacity-70 hover:opacity-100 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
+              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] opacity-70 hover:opacity-100 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
             >
               <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-gray-300 dark:bg-[#71717A]" />
               <div className="pl-12">
@@ -154,7 +154,7 @@ export default function DashboardPage() {
         <div className="col-span-1 flex flex-col gap-6">
 
           {/* Mini Takvim Kartı */}
-          <div className="bg-white dark:bg-[#3F3F46] rounded-2xl p-6 shadow-sm dark:shadow-none dark:border dark:border-[#52525B]">
+          <div className="bg-white dark:bg-[#27272A] rounded-2xl p-6 shadow-sm dark:shadow-none dark:border dark:border-white/10">
             <div className="flex justify-between items-center mb-6">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-[#F8FAFC] uppercase tracking-wide">
                 {MONTHS[calMonth].toUpperCase()} {calYear}
@@ -252,7 +252,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Voia Dinliyor Widget'ı */}
-          <div className="bg-[#0f4c3a] dark:bg-[#1e293b] dark:border dark:border-[#00BBA7]/30 rounded-[20px] p-8 text-center shadow-lg relative overflow-hidden flex-1 flex flex-col justify-center min-h-[220px]">
+          <div className="bg-[#0f4c3a] dark:bg-[#1E1E1E] dark:border dark:border-[#00BBA7]/30 rounded-[20px] p-8 text-center shadow-lg relative overflow-hidden flex-1 flex flex-col justify-center min-h-[220px]">
             <div className="w-16 h-16 bg-[#165a46] dark:bg-[#00BBA7]/20 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-[#1c6953] dark:border-[#00BBA7]/40 shadow-inner relative z-10">
               <svg className="w-6 h-6 text-white dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />

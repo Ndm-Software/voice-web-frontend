@@ -81,7 +81,7 @@ export default function ProfilePage() {
       <div className="space-y-8">
 
         {/* KİŞİSEL BİLGİLER KARTI */}
-        <div className="bg-white dark:bg-[#3F3F46] rounded-2xl p-8 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
+        <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold text-lg mb-6">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -92,7 +92,7 @@ export default function ProfilePage() {
           <div className="flex gap-10">
             {/* Profil Fotoğrafı */}
             <div className="flex flex-col items-center">
-              <div className="relative w-32 h-32 rounded-2xl bg-gray-100 dark:bg-[#71717A]/30 border border-gray-200 dark:border-[#52525B] overflow-hidden mb-3">
+              <div className="relative w-32 h-32 rounded-2xl bg-gray-100 dark:bg-[#71717A]/30 border border-gray-200 dark:border-white/10 overflow-hidden mb-3">
                 <img src={avatarSrc} alt="Profil" className="w-full h-full object-cover" />
                 {/* Gizli dosya input */}
                 <input
@@ -130,7 +130,7 @@ export default function ProfilePage() {
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50/50 dark:bg-[#0F172A]/50 border border-gray-200 dark:border-[#52525B] rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#0F172A]/80 transition-all"
+                  className="w-full px-4 py-3 bg-gray-50/50 dark:bg-[#1A1A1A]/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#1A1A1A]/80 transition-all"
                 />
               </div>
 
@@ -141,7 +141,7 @@ export default function ProfilePage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50/50 dark:bg-[#0F172A]/50 border border-gray-200 dark:border-[#52525B] rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#0F172A]/80 transition-all"
+                  className="w-full px-4 py-3 bg-gray-50/50 dark:bg-[#1A1A1A]/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#1A1A1A]/80 transition-all"
                 />
               </div>
 
@@ -152,7 +152,7 @@ export default function ProfilePage() {
                   type="tel"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full pl-4 pr-32 py-3 bg-gray-50/50 dark:bg-[#0F172A]/50 border border-gray-200 dark:border-[#52525B] rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#0F172A]/80 transition-all"
+                  className="w-full pl-4 pr-32 py-3 bg-gray-50/50 dark:bg-[#1A1A1A]/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 focus:bg-white dark:focus:bg-[#1A1A1A]/80 transition-all"
                 />
                 <div className="absolute right-3 top-[34px] flex items-center bg-teal-50 dark:bg-[#34D399]/10 text-teal-600 dark:text-[#34D399] border border-teal-100 dark:border-[#34D399]/30 px-2.5 py-1 rounded-md">
                   <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,7 +166,7 @@ export default function ProfilePage() {
         </div>
 
         {/* TERCİHLER KARTI */}
-        <div className="bg-white dark:bg-[#3F3F46] rounded-2xl p-8 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
+        <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold text-lg mb-6">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -185,7 +185,7 @@ export default function ProfilePage() {
                   className={`flex items-center px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all ${
                     form.language === lang.key
                       ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-2 border-[#0f4c3a] dark:border-[#00BBA7] text-[#0f4c3a] dark:text-[#00BBA7]'
-                      : 'bg-white dark:bg-[#0F172A]/30 border border-gray-200 dark:border-[#52525B] text-gray-600 dark:text-[#CBD5E1] font-medium hover:border-gray-300 dark:hover:border-[#71717A] hover:bg-gray-50 dark:hover:bg-[#3F3F46]/60'
+                      : 'bg-white dark:bg-[#1A1A1A]/30 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-[#CBD5E1] font-medium hover:border-gray-300 dark:hover:border-[#71717A] hover:bg-gray-50 dark:hover:bg-white/5'
                   }`}
                 >
                   {form.language === lang.key && (
@@ -203,14 +203,14 @@ export default function ProfilePage() {
             {/* Bildirim Zamanı */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Bildirim Zamanı</label>
-              <div className="flex bg-gray-50/50 dark:bg-[#0F172A]/40 p-1 rounded-xl border border-gray-200 dark:border-[#52525B]">
+              <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
                 {NOTIF_OPTS.map((opt) => (
                   <button
                     key={opt.key}
                     onClick={() => setForm({ ...form, notifTime: opt.key })}
                     className={`flex-1 py-2 text-sm transition-all rounded-lg ${
                       form.notifTime === opt.key
-                        ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
+                       ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
                         : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
                     }`}
                   >
@@ -223,14 +223,14 @@ export default function ProfilePage() {
             {/* Arama Hatırlatıcı */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Arama Hatırlatıcı</label>
-              <div className="flex bg-gray-50/50 dark:bg-[#0F172A]/40 p-1 rounded-xl border border-gray-200 dark:border-[#52525B]">
+              <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
                 {CALL_OPTS.map((opt) => (
                   <button
                     key={opt.key}
                     onClick={() => setForm({ ...form, callTime: opt.key })}
                     className={`flex-1 py-2 text-sm transition-all rounded-lg ${
                       form.callTime === opt.key
-                        ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
+                       ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
                         : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
                     }`}
                   >

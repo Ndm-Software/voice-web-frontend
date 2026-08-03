@@ -203,7 +203,7 @@ export default function RegisterPage() {
         <ShaderBackground />
 
         {/* İçerik Kartı */}
-        <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#121212]/40 p-8 rounded-3xl border border-white/50 dark:border-white/10 shadow-xl dark:shadow-2xl transition-all duration-500">
+        <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1A1A1A]/40 p-8 rounded-3xl border border-white/50 dark:border-white/10 shadow-xl dark:shadow-2xl transition-all duration-500">
           <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-2 drop-shadow-sm">Voia</h1>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 drop-shadow-sm">Aramıza Katılın</h2>
           <p className="text-gray-800 dark:text-gray-300 font-medium mb-10 text-sm leading-relaxed">

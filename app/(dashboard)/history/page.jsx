@@ -109,7 +109,7 @@ export default function HistoryPage() {
             placeholder="Geçmişte ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
           />
         </div>
       </div>
@@ -151,10 +151,10 @@ export default function HistoryPage() {
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className={`bg-white dark:bg-[#3F3F46] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer ${
+                    className={`bg-white dark:bg-[#27272A] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer ${
                       item.redBorder
                         ? 'border-red-200 dark:border-red-900/50 relative overflow-hidden'
-                        : 'border-gray-100 dark:border-[#52525B]'
+                        : 'border-gray-100 dark:border-white/10'
                     }`}
                   >
                     {item.redBorder && (

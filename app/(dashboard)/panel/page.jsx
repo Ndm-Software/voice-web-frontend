@@ -260,7 +260,7 @@ export default function DashboardPage() {
             </div>
             <h4 className="text-white font-bold text-lg mb-2 relative z-10">Voia Dinliyor...</h4>
             <p className="text-teal-100 dark:text-[#CBD5E1] text-[13px] leading-relaxed px-4 relative z-10">
-              "Hava durumunu sor" veya "Hatırlatıcı ekle" deyin.
+              "Yarın 10'a toplantı ekle" veya "Bana marketi hatırlat" deyin.
             </p>
           </div>
 

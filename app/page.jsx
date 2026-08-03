@@ -64,7 +64,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="max-w-2xl mx-auto text-lg lg:text-xl text-gray-600 dark:text-gray-400 mb-10 leading-relaxed">
-            Düşünün, söyleyin, Voia yapsın. 6 farklı dil desteğiyle notlar alın, hatırlatıcılar kurun ve aramalarınızı sadece konuşarak profesyonelce gerçekleştirin.
+            Düşünün, söyleyin, Voia yapsın. Türkçe ve İngilizce dil desteğiyle notlar alın, hatırlatıcılar kurun ve aramalarınızı sadece konuşarak profesyonelce gerçekleştirin.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -89,13 +89,14 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Özellik 1 */}
+            {/* Özellik 1 */}
             <div className="bg-gray-50 dark:bg-[#27272A] p-8 rounded-3xl border border-gray-100 dark:border-white/5 hover:border-teal-200 dark:hover:border-[#00BBA7]/30 transition-all duration-300 group">
               <div className="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-[#1A1A1A] flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
               </div>
-              <h3 className="text-xl font-bold mb-3">6 Farklı Dil Desteği</h3>
+              <h3 className="text-xl font-bold mb-3">Türkçe ve İngilizce Desteği</h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                Türkçe, İngilizce, Almanca ve daha fazlası. Voia hangi dilde konuşursanız konuşun sizi anlar ve aksiyon alır.
+                Voia her iki dilde de doğal konuşmanızı kusursuz anlar ve aksiyon alır. Üstelik çok yakında yeni dillerle karşınızda.
               </p>
             </div>
 

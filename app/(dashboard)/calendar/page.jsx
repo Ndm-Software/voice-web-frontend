@@ -51,7 +51,7 @@ export default function CalendarPage() {
     <div className="w-full max-w-[1100px] mx-auto flex gap-8">
 
       {/* SOL: Büyük Takvim */}
-      <div className="flex-[2] bg-white dark:bg-[#3F3F46] rounded-2xl p-6 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none flex flex-col h-[calc(100vh-140px)]">
+      <div className="flex-[2] bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none flex flex-col h-[calc(100vh-140px)]">
 
         {/* Takvim Üst Kontrolleri */}
         <div className="flex justify-between items-center mb-6 px-2">
@@ -82,14 +82,14 @@ export default function CalendarPage() {
           </div>
 
           {/* Görünüm Seçici */}
-          <div className="flex bg-gray-100 dark:bg-[#0F172A]/50 rounded-lg p-1">
+          <div className="flex bg-gray-100 dark:bg-[#1A1A1A]/50 rounded-lg p-1">
             {VIEWS.map((view) => (
               <button
                 key={view}
                 onClick={() => setActiveView(view)}
                 className={`px-5 py-1.5 text-sm rounded-md transition-all ${
                   activeView === view
-                    ? 'font-bold bg-white dark:bg-[#3F3F46] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm'
+                    ? 'font-bold bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm'
                     : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
                 }`}
               >
@@ -100,9 +100,9 @@ export default function CalendarPage() {
         </div>
 
         {/* Takvim Izgarası */}
-        <div className="flex-1 flex flex-col border border-gray-100 dark:border-[#52525B] rounded-xl overflow-hidden">
+        <div className="flex-1 flex flex-col border border-gray-100 dark:border-white/10 rounded-xl overflow-hidden">
           {/* Gün İsimleri */}
-          <div className="grid grid-cols-7 border-b border-gray-100 dark:border-[#52525B] bg-gray-50 dark:bg-[#0F172A]/40">
+          <div className="grid grid-cols-7 border-b border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-[#1A1A1A]/40">
             {DAY_NAMES.map((day) => (
               <div key={day} className="py-3 text-center text-[13px] font-bold text-gray-500 dark:text-[#71717A]">
                 {day}
@@ -114,7 +114,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 flex-1">
             {/* 1. Hafta - önceki ay */}
             {[25,26,27,28].map((d) => (
-              <div key={`prev-${d}`} className="border-b border-r border-gray-100 dark:border-[#52525B] p-2 text-gray-300 dark:text-[#52525B] text-sm font-medium text-right">
+              <div key={`prev-${d}`} className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-gray-300 dark:text-[#52525B] text-sm font-medium text-right`}>
                 {d}
               </div>
             ))}
@@ -122,10 +122,10 @@ export default function CalendarPage() {
               <div
                 key={d}
                 onClick={() => setSelectedDay(d)}
-                className={`border-b ${d !== 3 ? 'border-r' : ''} border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
+                className={`border-b ${d !== 3 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 {d}
@@ -137,10 +137,10 @@ export default function CalendarPage() {
               <div
                 key={d}
                 onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
+                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 <span>{d}</span>
@@ -153,10 +153,10 @@ export default function CalendarPage() {
               <div
                 key={`w3-${d}`}
                 onClick={() => setSelectedDay(d)}
-                className={`border-b border-r border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
+                className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 {d}
@@ -165,10 +165,10 @@ export default function CalendarPage() {
             {/* Seçili gün 11 */}
             <div
               onClick={() => setSelectedDay(11)}
-              className={`border-b border-r border-gray-100 dark:border-[#52525B] p-2 font-bold text-right flex flex-col items-end cursor-pointer transition-colors ${
+              className={`border-b border-r border-gray-100 dark:border-white/10 p-2 font-bold text-right flex flex-col items-end cursor-pointer transition-colors ${
                 selectedDay === 11
                   ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10'
-                  : 'hover:bg-gray-50 dark:hover:bg-[#71717A]/10 bg-teal-50/50 dark:bg-[#00BBA7]/10'
+                  : 'hover:bg-gray-50 dark:hover:bg-white/5 bg-teal-50/50 dark:bg-[#00BBA7]/10'
               }`}
             >
               <span className="text-[#0f4c3a] dark:text-[#00BBA7]">11</span>
@@ -181,10 +181,10 @@ export default function CalendarPage() {
               <div
                 key={d}
                 onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 3 ? 'border-r' : ''} border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
+                className={`border-b ${i < 3 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 {d}
@@ -196,10 +196,10 @@ export default function CalendarPage() {
               <div
                 key={d}
                 onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
+                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 <span>{d}</span>
@@ -212,10 +212,10 @@ export default function CalendarPage() {
               <div
                 key={d}
                 onClick={() => setSelectedDay(d)}
-                className={`${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-[#52525B] p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
+                className={`${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
                   selectedDay === d
                     ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#71717A]/10'
+                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
                 {d}
@@ -238,7 +238,7 @@ export default function CalendarPage() {
 
         <div className="flex-1 space-y-4">
           {dayReminders.length === 0 && (
-            <div className="bg-white dark:bg-[#3F3F46] rounded-xl p-8 border border-gray-100 dark:border-[#52525B] shadow-sm text-center">
+            <div className="bg-white dark:bg-[#27272A] rounded-xl p-8 border border-gray-100 dark:border-white/10 shadow-sm text-center">
               <p className="text-gray-400 dark:text-[#71717A] text-sm font-medium mb-4">Bu gün için etkinlik yok.</p>
               <Link
                 href="/calendar/new"
@@ -255,7 +255,7 @@ export default function CalendarPage() {
           {dayReminders.map((r) => (
             <div
               key={r.id}
-              className="bg-white dark:bg-[#3F3F46] rounded-xl p-5 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex justify-between items-start mb-3">
                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide ${r.tagClass}`}>

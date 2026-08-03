@@ -21,6 +21,6 @@ body {
 
 /* Sadece html.dark olduğunda body'ye dark arka plan uygula */
 .dark body {
-  background: #0F172A;
+  background: #1A1A1A;
   color: #F8FAFC;
 }

@@ -83,7 +83,7 @@ export default function QuietHoursPage() {
           <input
             type="text"
             placeholder="Ayarlarda ara..."
-            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#3F3F46] border border-gray-200 dark:border-[#52525B] rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
           />
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function QuietHoursPage() {
       <div className="flex gap-8">
 
         {/* ─── SOL: Haftalık Program ─────────────────────────────── */}
-        <div className="flex-[2] bg-white dark:bg-[#3F3F46] rounded-2xl p-6 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
+        <div className="flex-[2] bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +161,7 @@ export default function QuietHoursPage() {
                       value={day.startTime}
                       onChange={(e) => updateTime(index, 'startTime', e.target.value)}
                       disabled={!day.enabled}
-                      className="w-28 text-center py-2 bg-gray-50 dark:bg-[#0F172A]/40 border border-gray-200 dark:border-[#52525B] rounded-lg text-sm font-medium text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 cursor-pointer"
+                      className="w-28 text-center py-2 bg-gray-50 dark:bg-[#1A1A1A]/40 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 cursor-pointer"
                     />
                   </div>
 
@@ -174,7 +174,7 @@ export default function QuietHoursPage() {
                       value={day.endTime}
                       onChange={(e) => updateTime(index, 'endTime', e.target.value)}
                       disabled={!day.enabled}
-                      className="w-28 text-center py-2 bg-gray-50 dark:bg-[#0F172A]/40 border border-gray-200 dark:border-[#52525B] rounded-lg text-sm font-medium text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 cursor-pointer"
+                      className="w-28 text-center py-2 bg-gray-50 dark:bg-[#1A1A1A]/40 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export default function QuietHoursPage() {
         <div className="flex-1 flex flex-col gap-6">
 
           {/* Yerel Saat Kartı */}
-          <div className="bg-white dark:bg-[#3F3F46] rounded-2xl p-6 border border-gray-100 dark:border-[#52525B] shadow-sm dark:shadow-none">
+          <div className="bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
             <h4 className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-2">YEREL SAAT</h4>
             <div className="flex items-end gap-2 mb-3">
               <span className="text-4xl font-extrabold text-[#0f4c3a] dark:text-[#00BBA7] leading-none">21:38</span>
@@ -248,7 +248,7 @@ export default function QuietHoursPage() {
           </div>
 
           {/* Akıllı Bilgi Kartı */}
-          <div className="bg-[#0f4c3a] dark:bg-[#1e293b] dark:border dark:border-[#00BBA7]/30 rounded-2xl p-6 shadow-lg relative overflow-hidden text-white flex-1 min-h-[200px]">
+          <div className="bg-[#0f4c3a] dark:bg-[#1E1E1E] dark:border dark:border-[#00BBA7]/30 rounded-2xl p-6 shadow-lg relative overflow-hidden text-white flex-1 min-h-[200px]">
             {/* Dekoratif Arka Plan */}
             <svg className="absolute top-4 right-4 w-12 h-12 text-teal-600/30 dark:text-[#00BBA7]/20" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" />

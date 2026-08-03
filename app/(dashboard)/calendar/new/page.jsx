@@ -32,7 +32,7 @@ export default function NewReminderPage() {
       )}
       
       {/* Sayfa İçeriği: Ana Kart */}
-      <div className="bg-white dark:bg-[#3F3F46] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-[#52525B] transition-colors duration-300">
+      <div className="bg-white dark:bg-[#27272A] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-white/10 transition-colors duration-300">
         
         <form className="space-y-8">
           
@@ -44,7 +44,7 @@ export default function NewReminderPage() {
             <input
               type="text"
               placeholder="Toplantı hazırlığı..."
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
             />
           </div>
 
@@ -55,7 +55,7 @@ export default function NewReminderPage() {
                 ASİSTAN DİLİ
               </label>
               <div className="relative">
-                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
+                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
                   <option>Türkçe</option>
                   <option>English</option>
                 </select>
@@ -67,7 +67,7 @@ export default function NewReminderPage() {
                 TEKRAR
               </label>
               <div className="relative">
-                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
+                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
                   <option>Bir kez</option>
                   <option>Her Gün</option>
                   <option>Her Hafta</option>

@@ -74,18 +74,6 @@ export default function QuietHoursPage() {
             Dinlenme zamanlarınızı ve rahatsız edilmeyeceğiniz saatleri buradan yönetin.
           </p>
         </div>
-
-        {/* Sayfa İçi Arama Çubuğu */}
-        <div className="relative w-64">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-[#71717A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Ayarlarda ara..."
-            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
-          />
-        </div>
       </div>
 
       <div className="flex gap-8">
@@ -246,32 +234,6 @@ export default function QuietHoursPage() {
               </button>
             </div>
           </div>
-
-          {/* Akıllı Bilgi Kartı */}
-          <div className="bg-[#0f4c3a] dark:bg-[#1E1E1E] dark:border dark:border-[#00BBA7]/30 rounded-2xl p-6 shadow-lg relative overflow-hidden text-white flex-1 min-h-[200px]">
-            {/* Dekoratif Arka Plan */}
-            <svg className="absolute top-4 right-4 w-12 h-12 text-teal-600/30 dark:text-[#00BBA7]/20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" />
-            </svg>
-
-            <div className="flex items-center gap-2 mb-3 relative z-10">
-              <svg className="w-5 h-5 text-teal-300 dark:text-[#00BBA7]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" />
-                <path d="M19 16L19.75 19.25L23 20L19.75 20.75L19 24L18.25 20.75L15 20L18.25 19.25L19 16Z" />
-              </svg>
-              <h4 className="font-bold text-lg">Akıllı Bilgi</h4>
-            </div>
-            <p className="text-teal-50 dark:text-[#CBD5E1] text-[13px] leading-relaxed mb-6 relative z-10 opacity-90">
-              Voia, hafta içi 06:30'da uyandığınızı fark etti. Sabah brifingi deneyiminizi iyileştirmek için sessiz saatleri bu saate göre optimize edebilirsiniz.
-            </p>
-            <button
-              onClick={handleOptimize}
-              className="w-full bg-[#1c6953] dark:bg-[#00BBA7]/20 hover:bg-[#258268] dark:hover:bg-[#00BBA7]/30 text-white font-bold py-3 rounded-xl text-xs tracking-wider transition-colors border border-[#258268] dark:border-[#00BBA7]/40 shadow-sm relative z-10"
-            >
-              PROGRAMI OPTİMİZE ET
-            </button>
-          </div>
-
         </div>
       </div>
 

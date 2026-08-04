@@ -250,20 +250,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-
-          {/* Voia Dinliyor Widget'ı */}
-          <div className="bg-[#0f4c3a] dark:bg-[#1E1E1E] dark:border dark:border-[#00BBA7]/30 rounded-[20px] p-8 text-center shadow-lg relative overflow-hidden flex-1 flex flex-col justify-center min-h-[220px]">
-            <div className="w-16 h-16 bg-[#165a46] dark:bg-[#00BBA7]/20 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-[#1c6953] dark:border-[#00BBA7]/40 shadow-inner relative z-10">
-              <svg className="w-6 h-6 text-white dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </div>
-            <h4 className="text-white font-bold text-lg mb-2 relative z-10">Voia Dinliyor...</h4>
-            <p className="text-teal-100 dark:text-[#CBD5E1] text-[13px] leading-relaxed px-4 relative z-10">
-              "Yarın 10'a toplantı ekle" veya "Bana marketi hatırlat" deyin.
-            </p>
-          </div>
-
         </div>
       </div>
     </div>

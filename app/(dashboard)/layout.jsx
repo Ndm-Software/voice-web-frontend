@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }) {
   const [activeLang, setActiveLang] = useState('TR');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -221,18 +221,19 @@ export default function DashboardLayout({ children }) {
                 {showProfileMenu && (
                   <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#27272A] rounded-xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden py-1">
                     <button
+                      onClick={() => { setShowProfileMenu(false); router.push('/profile'); }}
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                      Profil
+                    </button>
+                    <div className="border-t border-gray-100 dark:border-white/10 my-1" />
+                    <button
                       onClick={() => { setShowProfileMenu(false); router.push('/login'); }}
                       className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                      Hesaptan Çıkış
-                    </button>
-                    <button
-                      onClick={() => { setShowProfileMenu(false); setShowDeleteModal(true); }}
-                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      Hesabı Sil
+                      Çıkış Yap
                     </button>
                   </div>
                 )}
@@ -248,31 +249,7 @@ export default function DashboardLayout({ children }) {
         </main>
       </div>
 
-      {/* Hesabı Sil Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-[#27272A] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 p-6 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-[#F8FAFC] mb-2">Hesabı Sil</h3>
-            <p className="text-sm text-gray-500 dark:text-[#CBD5E1] mb-6 leading-relaxed">
-              Hesabınızı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-            </p>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-[#CBD5E1] bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 dark:hover:bg-white/5 transition-colors focus:outline-none"
-              >
-                İptal
-              </button>
-              <button
-                onClick={() => { setShowDeleteModal(false); router.push('/login'); }}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-colors focus:outline-none shadow-sm"
-              >
-                Hesabı Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );

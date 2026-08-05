@@ -13,6 +13,17 @@ const INITIAL_FORM = {
   callTime:  'Aninda',
 };
 
+// Auth storage'ı temizleyen yardımcı fonksiyon.
+// Projedeki token key'i backend entegrasyonuna göre belirleneceğinden
+// yaygın kullanılan tüm key'ler temizleniyor.
+const clearAuthStorage = () => {
+  const AUTH_KEYS = ['token', 'access_token', 'refresh_token', 'authToken', 'auth', 'user'];
+  AUTH_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
@@ -129,7 +140,10 @@ export default function ProfilePage() {
               <button
                 id="btn-confirm-delete"
                 type="button"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => {
+                  clearAuthStorage();
+                  router.push('/');
+                }}
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-500/90 dark:hover:bg-red-500 text-white font-bold rounded-xl text-sm transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +390,7 @@ export default function ProfilePage() {
               <button
                 id="btn-logout"
                 type="button"
-                onClick={() => {}}
+                onClick={() => router.push('/')}
                 className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-[#71717A]/20 hover:bg-gray-200 dark:hover:bg-[#71717A]/30 text-gray-700 dark:text-[#CBD5E1] font-bold rounded-xl text-sm transition-all active:scale-[0.98]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

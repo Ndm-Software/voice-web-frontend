@@ -132,7 +132,7 @@ export default function DashboardPage() {
             >
               <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-gray-300 dark:bg-[#71717A]" />
               <div className="pl-12">
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">Anneyi Ara - Doğum Günü</h4>
+                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">Annemi Aramalıyım - Doğum Günü</h4>
                 <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">15 Ekim, 18:00 • Tekrarlayan</p>
               </div>
             </Link>

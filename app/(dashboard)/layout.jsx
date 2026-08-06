@@ -4,6 +4,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
+// Auth storage'ı temizleyen yardımcı fonksiyon.
+// Projedeki token key'i backend entegrasyonuna göre belirleneceğinden
+// yaygın kullanılan tüm key'ler temizleniyor.
+const clearAuthStorage = () => {
+  const AUTH_KEYS = ['token', 'access_token', 'refresh_token', 'authToken', 'auth', 'user'];
+  AUTH_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+};
+
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -229,7 +240,11 @@ export default function DashboardLayout({ children }) {
                     </button>
                     <div className="border-t border-gray-100 dark:border-white/10 my-1" />
                     <button
-                      onClick={() => { setShowProfileMenu(false); router.push('/login'); }}
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        clearAuthStorage();
+                        router.push('/');
+                      }}
                       className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>

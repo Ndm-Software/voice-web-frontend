@@ -373,9 +373,7 @@ export default function ProfilePage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Son görülme: 2 saat önce</p>
                 </div>
               </div>
-              <button className="text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100">
-                Çıkış Yap
-              </button>
+              
             </div>
 
           </div>

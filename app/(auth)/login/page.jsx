@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { login } from '@/lib/api';
 
 // WebGL Animasyon Bileşeni (Açık/Koyu Moda Duyarlı)
 const ShaderBackground = () => {
@@ -163,11 +165,33 @@ void main() {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [toast, setToast] = React.useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await login(email, password);
+      // Token backend tarafından HttpOnly cookie olarak yazılır.
+      // Frontend token'ı görmez veya saklamaz; tarayıcı sonraki isteklerde
+      // cookie'yi otomatik gönderir (credentials: 'include' sayesinde).
+      router.push('/panel');
+    } catch (err) {
+      setError(err.message || 'Giriş başarısız. Bilgilerinizi kontrol edin.');
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <div className="min-h-screen flex bg-white dark:bg-[#1A1A1A] font-sans transition-colors duration-500">
@@ -239,7 +263,7 @@ export default function LoginPage() {
             <p className="text-gray-500 dark:text-[#CBD5E1] text-sm">Devam etmek için bilgilerinizi girin.</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-2">
                 E-Posta adresi
@@ -247,6 +271,9 @@ export default function LoginPage() {
               <input
                 type="email"
                 placeholder="isim@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full bg-gray-50 dark:bg-[#27272A] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
@@ -263,16 +290,25 @@ export default function LoginPage() {
               <input
                 type="password"
                 placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 className="w-full bg-gray-50 dark:bg-[#27272A] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
-            <Link
-              href="/panel"
-              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3 rounded-xl transition-colors mt-4 shadow-sm flex items-center justify-center"
+            {/* Hata mesajı */}
+            {error && (
+              <p className="text-red-500 dark:text-red-400 text-sm text-center">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3 rounded-xl transition-colors mt-4 shadow-sm flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Giriş Yap
-            </Link>
+              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+            </button>
           </form>
 
           <div className="my-8 flex items-center">

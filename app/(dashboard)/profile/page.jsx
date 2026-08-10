@@ -377,8 +377,7 @@ export default function ProfilePage() {
             </div>
 
           </div>
-        </div>
-
+          
         {/* HESAP YÖNETİMİ KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           {/* Kart Başlığı */}

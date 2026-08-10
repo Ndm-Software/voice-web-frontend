@@ -9,6 +9,14 @@ export default function NewReminderPage() {
   const [notificationTime, setNotificationTime] = useState('Zamanında');
   const [callTime, setCallTime] = useState('Zamanında');
   const [toast, setToast] = useState(null);
+  // TEKRAR ve Asistan Dili seçeneği için gereken State'ler
+  const [selectedLang, setSelectedLang] = useState('Türkçe');
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const langOptions = ['Türkçe', 'English'];
+
+  const [selectedRepeat, setSelectedRepeat] = useState('Bir kez');
+  const [isRepeatOpen, setIsRepeatOpen] = useState(false);
+  const repeatOptions = ['Bir kez', 'Her Gün', 'Her Hafta'];
 
   const handleSave = () => {
     setToast('Hatırlatıcı başarıyla kaydedildi!');
@@ -50,31 +58,97 @@ export default function NewReminderPage() {
 
           {/* 2. Satır: Asistan Dili ve Tekrar */}
           <div className="grid grid-cols-2 gap-6">
+            
+            {/* ASİSTAN DİLİ */}
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 ASİSTAN DİLİ
               </label>
               <div className="relative">
-                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
-                  <option>Türkçe</option>
-                  <option>English</option>
-                </select>
-                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                {/* Ana Kutu */}
+                <div
+                  onClick={() => {
+                    setIsLangOpen(!isLangOpen);
+                    setIsRepeatOpen(false); // Diğeri açıksa kapat
+                  }}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium cursor-pointer flex justify-between items-center transition-all hover:bg-gray-100 dark:hover:bg-[#1A1A1A]/80 border border-transparent focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20"
+                >
+                  <span>{selectedLang}</span>
+                  <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-300 ${isLangOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+
+                {/* Açılır Menü */}
+                {isLangOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-[#00BBA7]/20 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    {langOptions.map((option) => (
+                      <div
+                        key={option}
+                        onClick={() => {
+                          setSelectedLang(option);
+                          setIsLangOpen(false);
+                        }}
+                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${
+                          selectedLang === option
+                            ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
+                            : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
+                        }`}
+                      >
+                        {option}
+                        {selectedLang === option && (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* TEKRAR */}
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 TEKRAR
               </label>
               <div className="relative">
-                <select className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 appearance-none cursor-pointer transition-colors">
-                  <option>Bir kez</option>
-                  <option>Her Gün</option>
-                  <option>Her Hafta</option>
-                </select>
-                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                {/* Ana Kutu */}
+                <div
+                  onClick={() => {
+                    setIsRepeatOpen(!isRepeatOpen);
+                    setIsLangOpen(false); // Diğeri açıksa kapat
+                  }}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium cursor-pointer flex justify-between items-center transition-all hover:bg-gray-100 dark:hover:bg-[#1A1A1A]/80 border border-transparent focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20"
+                >
+                  <span>{selectedRepeat}</span>
+                  <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-300 ${isRepeatOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+
+                {/* Açılır Menü */}
+                {isRepeatOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-[#00BBA7]/20 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    {repeatOptions.map((option) => (
+                      <div
+                        key={option}
+                        onClick={() => {
+                          setSelectedRepeat(option);
+                          setIsRepeatOpen(false);
+                        }}
+                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${
+                          selectedRepeat === option
+                            ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
+                            : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
+                        }`}
+                      >
+                        {option}
+                        {selectedRepeat === option && (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
           </div>
 
           {/* 3. Satır: Tarih ve Saat */}
@@ -162,30 +236,6 @@ export default function NewReminderPage() {
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* 6. Satır: Asistan Dinliyor Barı */}
-          <div className="mt-8 bg-[#f4f9f7] dark:bg-[#00BBA7]/5 border border-teal-100 dark:border-[#00BBA7]/20 rounded-2xl p-5 flex items-center justify-between transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full flex items-center justify-center text-white shadow-md cursor-pointer hover:bg-[#0a3629] dark:hover:bg-[#009F8E] transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-              </div>
-              <div>
-                <h4 className="text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-1">ASİSTAN DİNLİYOR...</h4>
-                {/* Ses Dalgası Efekti */}
-                <div className="flex items-center gap-1">
-                  <div className="w-1 h-3 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-1 h-4 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-1 h-2 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  <div className="w-1 h-5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full animate-bounce" style={{ animationDelay: '450ms' }}></div>
-                  <div className="w-1 h-3 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full animate-bounce" style={{ animationDelay: '600ms' }}></div>
-                </div>
-              </div>
-            </div>
-            
-            <p className="text-gray-500 dark:text-[#CBD5E1] text-sm italic font-medium">
-              "Yarın sabah 9'da proje sunumunu hatırlat"
-            </p>
           </div>
 
           {/* Alt Butonlar (İptal ve Kaydet) */}

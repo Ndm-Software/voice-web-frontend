@@ -286,21 +286,6 @@ export default function CalendarPage() {
             </div>
           ))}
         </div>
-
-        {/* Voia Dinliyor Mini Kartı */}
-        <div className="bg-[#e2f1ec] dark:bg-[#00BBA7]/10 rounded-xl p-5 flex items-center mt-6 shadow-sm dark:shadow-none border border-teal-100 dark:border-[#00BBA7]/30">
-          <div className="w-12 h-12 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full flex items-center justify-center shrink-0 mr-4 shadow-md">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-          </div>
-          <div>
-            <h4 className="font-bold text-[#0f4c3a] dark:text-[#00BBA7] text-sm">Voia dinliyor...</h4>
-            <p className="text-[#0f4c3a] dark:text-[#CBD5E1] text-[12px] italic opacity-80 mt-0.5">
-              "Bana bir hatırlatıcı eklememi söyle..."
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

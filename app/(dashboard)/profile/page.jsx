@@ -328,8 +328,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-<<<<<<< Updated upstream
-=======
         {/* BAĞLI CİHAZLAR KARTI */}
         <div className="bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
           
@@ -379,9 +377,7 @@ export default function ProfilePage() {
             </div>
 
           </div>
-        </div>
-
->>>>>>> Stashed changes
+          
         {/* HESAP YÖNETİMİ KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           {/* Kart Başlığı */}

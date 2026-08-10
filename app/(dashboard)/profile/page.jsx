@@ -328,6 +328,60 @@ export default function ProfilePage() {
           </div>
         </div>
 
+<<<<<<< Updated upstream
+=======
+        {/* BAĞLI CİHAZLAR KARTI */}
+        <div className="bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
+          
+          {/* Başlık Alanı */}
+          <div className="flex items-center gap-2 mb-6">
+            <svg className="w-5 h-5 text-[#0f4c3a] dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            <h3 className="text-lg font-bold text-[#0f4c3a] dark:text-[#00BBA7]">Bağlı Cihazlar</h3>
+          </div>
+
+          <div className="space-y-4">
+            
+            {/* 1. Cihaz: WEB (Aktif olan cihaz) */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-teal-100 dark:border-[#00BBA7]/20 bg-teal-50/30 dark:bg-[#00BBA7]/5 relative overflow-hidden">
+              {/* Aktif cihaz sol yeşil çizgi vurgusu */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c3a] dark:bg-[#00BBA7]"></div>
+              
+              <div className="flex items-center gap-4 pl-2">
+                <div className="w-11 h-11 rounded-full bg-teal-100 dark:bg-[#1A1A1A] flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm">
+                  {/* Web/Masaüstü İkonu */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    Windows 11 • Tarayıcı (Web)
+                    <span className="bg-teal-100 text-teal-800 dark:bg-[#00BBA7]/20 dark:text-[#00BBA7] text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Aktif</span>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">İstanbul, Türkiye • Chrome</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Cihaz: MOBİL */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#27272A]/50 hover:bg-white dark:hover:bg-[#2A2A2A] transition-colors group">
+              <div className="flex items-center gap-4 pl-2">
+                <div className="w-11 h-11 rounded-full bg-gray-200 dark:bg-[#1A1A1A] flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
+                  {/* Mobil Telefon İkonu */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">iPhone 14 Pro • Voia App</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Son görülme: 2 saat önce</p>
+                </div>
+              </div>
+              
+            </div>
+
+          </div>
+        </div>
+
+>>>>>>> Stashed changes
         {/* HESAP YÖNETİMİ KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           {/* Kart Başlığı */}

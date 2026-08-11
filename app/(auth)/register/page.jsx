@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // WebGL Animasyon Bileşeni (Açık/Koyu Moda Duyarlı)
 const ShaderBackground = () => {
@@ -164,24 +165,75 @@ void main() {
 };
 
 export default function RegisterPage() {
-  // Form State'leri
+  const router = useRouter();
+  
+  // Backend'in beklediği tüm alanlar için State'ler eklendi
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // Şifre Göster/Gizle State'leri
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Toast
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Şifre Eşleşme Durumu
   const isPasswordMatch = confirmPassword.length > 0 && password === confirmPassword;
   const isPasswordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
+  // Gerçek API Gönderim Fonksiyonu
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Backend'e kayıt isteği atılıyor
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          phoneNumber,
+          password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Kayıt başarısız. Lütfen bilgilerinizi kontrol edin.');
+      }
+
+      // Kayıt başarılıysa kullanıcıyı giriş sayfasına yönlendir
+      showToast('Kayıt başarılı! Giriş yapabilirsiniz.');
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-[#1A1A1A] font-sans transition-colors duration-500">
@@ -196,20 +248,15 @@ export default function RegisterPage() {
         </div>
       )}
       
-      {/* SOL TARAF: Biraz daha açık, nötr koyu gri olan #1E1E1E eklendi */}
+      {/* SOL TARAF */}
       <div className="w-1/2 relative p-16 flex flex-col justify-center overflow-hidden bg-gray-50 dark:bg-[#1E1E1E] transition-colors duration-500">
-        
-        {/* Hareketli Shader Arka Planı (Açık/Koyu Moda Otomatik Uyar) */}
         <ShaderBackground />
-
-        {/* İçerik Kartı */}
         <div className="max-w-md mx-auto w-full relative z-10 backdrop-blur-md bg-white/40 dark:bg-[#1A1A1A]/40 p-8 rounded-3xl border border-white/50 dark:border-white/10 shadow-xl dark:shadow-2xl transition-all duration-500">
           <h1 className="text-4xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-2 drop-shadow-sm">Voia</h1>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 drop-shadow-sm">Aramıza Katılın</h2>
           <p className="text-gray-800 dark:text-gray-300 font-medium mb-10 text-sm leading-relaxed">
             Kişisel ses asistanınızla tanışmaya çok az kaldı. Saniyeler içinde hesabınızı oluşturun ve hayatınızı sesinizle yönetmeye başlayın.
           </p>
-
           <div className="space-y-6">
             <div className="flex items-start">
               <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-white/5 backdrop-blur-sm transition-colors">
@@ -220,7 +267,6 @@ export default function RegisterPage() {
                 <p className="text-gray-700 dark:text-gray-400 font-medium text-xs mt-1">Anında kişiselleştirilmiş deneyim.</p>
               </div>
             </div>
-
             <div className="flex items-start">
               <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-white/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4 shrink-0 shadow-sm border border-teal-100/50 dark:border-white/5 backdrop-blur-sm transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -234,7 +280,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* SAĞ TARAF: Çok koyu gri olan #1A1A1A eklendi */}
+      {/* SAĞ TARAF */}
       <div className="w-1/2 bg-white dark:bg-[#1A1A1A] p-12 flex flex-col justify-center relative transition-colors duration-500">
         <div className="max-w-sm mx-auto w-full">
           
@@ -243,16 +289,35 @@ export default function RegisterPage() {
             <p className="text-gray-500 dark:text-[#CBD5E1] text-sm">Voia dünyasına adım atmak için bilgilerinizi girin.</p>
           </div>
 
-          <form className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
-                Ad Soyad
-              </label>
-              <input
-                type="text"
-                placeholder="Örn: Selin Aydın"
-                className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
-              />
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            
+            <div className="flex gap-4">
+              <div className="w-1/2">
+                <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
+                  Ad
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Örn: Selin"
+                  className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+                />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
+                  Soyad
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Örn: Aydın"
+                  className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+                />
+              </div>
             </div>
 
             <div>
@@ -261,12 +326,28 @@ export default function RegisterPage() {
               </label>
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="isim@email.com"
                 className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
 
-            {/* Şifre Alanı */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
+                Telefon Numarası
+              </label>
+              <input
+                type="tel"
+                required
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="05551112233"
+                className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
                 Şifre
@@ -274,12 +355,12 @@ export default function RegisterPage() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  required
                   placeholder="En az 8 karakter"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] pl-4 pr-11 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
                 />
-                {/* Göz İkonu */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -294,13 +375,11 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Şifre Tekrar Alanı */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide">
                   Şifre Tekrar
                 </label>
-                {/* Uyum Durumu Bildirimi */}
                 {isPasswordMismatch && (
                   <span className="text-xs font-bold text-red-500">Şifreler eşleşmiyor</span>
                 )}
@@ -314,6 +393,7 @@ export default function RegisterPage() {
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
+                  required
                   placeholder="Şifrenizi tekrar girin"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -339,12 +419,17 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <Link
-              href="/panel"
-              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold py-3 rounded-xl transition-colors mt-6 shadow-sm flex items-center justify-center"
+            {error && (
+              <p className="text-red-500 dark:text-red-400 text-sm text-center font-medium mt-2">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold py-3 rounded-xl transition-colors mt-6 shadow-sm flex items-center justify-center disabled:opacity-60"
             >
-              Kayıt Ol
-            </Link>
+              {loading ? 'Kaydediliyor...' : 'Kayıt Ol'}
+            </button>
           </form>
 
           <div className="my-6 flex items-center">
@@ -352,20 +437,6 @@ export default function RegisterPage() {
             <span className="mx-4 text-xs text-gray-400 dark:text-[#71717A] font-medium">VEYA</span>
             <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => showToast('Google ile kayıt yakında aktif olacak.')}
-            className="w-full bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-[#27272A] text-gray-700 dark:text-[#F8FAFC] font-medium py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm"
-          >
-            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Google ile Kayıt Ol
-          </button>
 
           <p className="text-center text-sm text-gray-500 dark:text-[#CBD5E1] mt-8">
             Zaten hesabınız var mı?{' '}

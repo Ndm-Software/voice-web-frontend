@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getUserProfile } from '@/lib/api';
 
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-// Ekim 2023 takvim verisi (sabit demo)
+// Takvim verisi (Şimdilik mock kalabilir, ileride backend'e bağlanır)
 const CALENDAR_DAYS = [
   { day: 27, prev: true }, { day: 28, prev: true }, { day: 29, prev: true }, { day: 30, prev: true },
   { day: 1 }, { day: 2 }, { day: 3 },
@@ -18,9 +19,31 @@ const CALENDAR_DAYS = [
 ];
 
 export default function DashboardPage() {
-  const [calMonth, setCalMonth] = useState(9); // Ekim = 9
+  // --- YENİ EKLENEN KISIM: Gerçek Kullanıcı Stateleri ---
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  // ------------------------------------------------------
+
+  const [calMonth, setCalMonth] = useState(9);
   const [calYear, setCalYear]   = useState(2023);
   const [selectedDay, setSelectedDay] = useState(11);
+
+  // --- YENİ EKLENEN KISIM: Backend'den Veri Çekme ---
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getUserProfile();
+        setUser(userData);
+      } catch (error) {
+        console.error("Kullanıcı verisi çekilemedi:", error);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+  // ------------------------------------------------------
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
@@ -35,13 +58,16 @@ export default function DashboardPage() {
   return (
     <div className="w-full max-w-[1000px] mx-auto">
 
-      {/* Karşılama Başlığı */}
+      {/* --- GÜNCELLENEN KISIM: Dinamik Karşılama Başlığı --- */}
       <div className="mb-8">
-        <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">Merhaba, Selin!</h2>
+        <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">
+          {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName || 'Kullanıcı'}!`}
+        </h2>
         <p className="text-gray-500 dark:text-[#CBD5E1] text-[15px]">
           İşte bugün için planladıkların ve asistanının notları.
         </p>
       </div>
+      {/* ------------------------------------------------------ */}
 
       {/* Üst İstatistik Kartları */}
       <div className="grid grid-cols-3 gap-6 mb-10">

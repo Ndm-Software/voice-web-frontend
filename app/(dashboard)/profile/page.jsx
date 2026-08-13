@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // useEffect eklendi
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getUserProfile } from '@/lib/api';
 
 const INITIAL_FORM = {
-  name:      'Selin Aydın',
-  email:     'selin.aydin@voia.com',
-  phone:     '+90 532 123 45 67',
+  name:      '',
+  email:     '',
+  phone:     '',
   language:  'TR',
   notifTime: '30dk',
   callTime:  'Aninda',
@@ -29,12 +30,40 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null);
 
   const [form, setForm]           = useState(INITIAL_FORM);
-  const [saved, setSaved]         = useState({ ...INITIAL_FORM });
+  const [saved, setSaved]         = useState(INITIAL_FORM);
+  const [loading, setLoading]     = useState(true); // Yüklenme state'i
   const [avatarSrc, setAvatarSrc] = useState(
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces'
   );
   const [toast, setToast] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Sayfa açıldığında verileri backend'den çek
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const data = await getUserProfile();
+        
+        // Backend'den gelen doğru değişken isimlerini kullanıyoruz (firstName, lastName, phoneNumber)
+        const backendData = {
+          ...INITIAL_FORM,
+          name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+          email: data.email || '',
+          phone: data.phoneNumber || '',
+        };
+        
+        setForm(backendData);
+        setSaved(backendData);
+      } catch (error) {
+        console.error("Profil bilgileri alınamadı:", error);
+        showToast('Bilgiler alınırken bir hata oluştu.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -68,6 +97,14 @@ export default function ProfilePage() {
     { key: '5dk',    label: '5 dk önce' },
     { key: '10dk',   label: '10 dk önce'},
   ];
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <div className="text-gray-500 font-medium text-lg">Profil bilgileri yükleniyor...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto">

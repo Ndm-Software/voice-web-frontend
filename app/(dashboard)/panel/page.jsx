@@ -61,7 +61,7 @@ export default function DashboardPage() {
       {/* --- GÜNCELLENEN KISIM: Dinamik Karşılama Başlığı --- */}
       <div className="mb-8">
         <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">
-          {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName || 'Kullanıcı'}!`}
+          {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName  || 'Kullanıcı'}!`}
         </h2>
         <p className="text-gray-500 dark:text-[#CBD5E1] text-[15px]">
           İşte bugün için planladıkların ve asistanının notları.

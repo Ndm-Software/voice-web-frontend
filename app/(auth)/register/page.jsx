@@ -28,7 +28,7 @@ const ShaderBackground = () => {
       resizeObserver = new ResizeObserver(syncSize);
       resizeObserver.observe(canvas);
     }
-    syncSize();
+    syncSize(); 3
 
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (!gl) return;
@@ -107,18 +107,18 @@ void main() {
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-    
+
     const pos = gl.getAttribLocation(prog, 'a_position');
     gl.enableVertexAttribArray(pos);
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
-    
+
     const uTime = gl.getUniformLocation(prog, 'u_time');
     const uRes = gl.getUniformLocation(prog, 'u_resolution');
     const uMouse = gl.getUniformLocation(prog, 'u_mouse');
     const uIsDark = gl.getUniformLocation(prog, 'u_isDark');
 
     let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
-    
+
     const handleMouseMove = (event) => {
       const rect = canvas.getBoundingClientRect();
       if (rect.width && rect.height) {
@@ -133,7 +133,7 @@ void main() {
     function render(t) {
       if (typeof ResizeObserver === 'undefined') syncSize();
       gl.viewport(0, 0, canvas.width, canvas.height);
-      
+
       // Temanın dark modda olup olmadığını dinamik kontrol et
       const isDark = document.documentElement.classList.contains('dark') ? 1.0 : 0.0;
 
@@ -145,7 +145,7 @@ void main() {
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       animationFrameId = requestAnimationFrame(render);
     }
-    
+
     animationFrameId = requestAnimationFrame(render);
 
     return () => {
@@ -156,9 +156,9 @@ void main() {
   }, []);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="absolute inset-0 w-full h-full object-cover z-0" 
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full object-cover z-0"
       style={{ display: 'block' }}
     />
   );
@@ -166,7 +166,7 @@ void main() {
 
 export default function RegisterPage() {
   const router = useRouter();
-  
+
   // Backend'in beklediği tüm alanlar için State'ler eklendi
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -174,12 +174,28 @@ export default function RegisterPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+
+  const handlePhoneChange = (e) => {
+    // Sadece rakamları al (harf veya özel karakter girişini engelle)
+    const numbers = e.target.value.replace(/[^\d]/g, "");
+
+    let formatted = numbers;
+    if (numbers.length > 4 && numbers.length <= 7) {
+      formatted = `${numbers.slice(0, 4)} ${numbers.slice(4)}`;
+    } else if (numbers.length > 7 && numbers.length <= 9) {
+      formatted = `${numbers.slice(0, 4)} ${numbers.slice(4, 7)} ${numbers.slice(7)}`;
+    } else if (numbers.length > 9) {
+      formatted = `${numbers.slice(0, 4)} ${numbers.slice(4, 7)} ${numbers.slice(7, 9)} ${numbers.slice(9, 11)}`;
+    }
+
+    setPhoneNumber(formatted);
+  };
 
   const showToast = (msg) => {
     setToast(msg);
@@ -194,13 +210,49 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Şifreler birbiriyle eşleşmiyor.');
+    // --- KULLANICI DOSTU FRONTEND DOĞRULAMALARI ---
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Lütfen adınızı ve soyadınızı girin.");
       return;
     }
 
+    if (!email) {
+      setError("Lütfen e-posta adresinizi girin.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Lütfen geçerli bir e-posta adresi formatı (örneğin: isim@mail.com) girin.");
+      return;
+    }
+
+    if (!phoneNumber) {
+      setError("Lütfen telefon numaranızı girin.");
+      return;
+    }
+
+    if (!password) {
+      setError("Lütfen bir şifre belirleyin.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Güvenliğiniz için şifreniz en az 8 karakter uzunluğunda olmalıdır.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Şifreler birbiriyle eşleşmiyor. Lütfen kontrol edin.");
+      return;
+    }
+    // ----------------------------------------------
+
     setLoading(true);
     try {
+      // Backend'e gönderirken boşlukları temizle
+      const cleanPhoneNumber = phoneNumber.replace(/\s/g, '');
+
       // Backend'e kayıt isteği atılıyor
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
         method: 'POST',
@@ -211,7 +263,7 @@ export default function RegisterPage() {
           firstName,
           lastName,
           email,
-          phoneNumber,
+          phoneNumber: cleanPhoneNumber, // Temizlenmiş hali gönderiliyor
           password
         }),
       });
@@ -219,7 +271,10 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Kayıt başarısız. Lütfen bilgilerinizi kontrol edin.');
+        // NestJS DTO hataları bazen dizi (array) olarak gelir. 
+        // Eğer diziyse ilk hatayı alıyoruz, değilse direkt mesajı alıyoruz.
+        const errorMsg = Array.isArray(data.message) ? data.message[0] : data.message;
+        throw new Error(errorMsg || 'Kayıt başarısız.');
       }
 
       // Kayıt başarılıysa kullanıcıyı giriş sayfasına yönlendir
@@ -229,7 +284,32 @@ export default function RegisterPage() {
       }, 1500);
 
     } catch (err) {
-      setError(err.message);
+      // BACKEND'DEN GELEN GERÇEK HATAYI KONSOLA YAZDIRIYORUZ
+      console.log("Backend'den Dönen Gerçek Hata:", err.message);
+
+      let backendError = (err.message || '').toLowerCase();
+
+      // İhtimalleri genişletiyoruz: Hem İngilizce hem de olası Türkçe backend hatalarını kapsar
+      if (
+        backendError.includes('already exists') ||
+        backendError.includes('unique constraint') ||
+        backendError.includes('in use') ||
+        backendError.includes('duplicate') ||
+        backendError.includes('kayıtlı') ||
+        backendError.includes('mevcut') ||
+        backendError.includes('kullanımda')
+      ) {
+        setError('Bu e-posta adresi veya telefon numarası zaten sistemde kayıtlı.');
+      } else if (backendError.includes('password must be longer')) {
+        setError('Şifreniz en az 8 karakter uzunluğunda olmalıdır.');
+      } else if (backendError.includes('email must be an email') || backendError.includes('invalid email')) {
+        setError('Lütfen geçerli bir e-posta adresi girin.');
+      } else if (backendError.includes('phone number') && backendError.includes('invalid')) {
+        setError('Lütfen geçerli bir telefon numarası girin.');
+      } else {
+        // Yakalanamayan diğer backend hataları
+        setError('Kayıt işlemi başarısız oldu. Lütfen bilgilerinizi kontrol edip tekrar deneyin.');
+      }
     } finally {
       setLoading(false);
     }
@@ -247,7 +327,7 @@ export default function RegisterPage() {
           {toast}
         </div>
       )}
-      
+
       {/* SOL TARAF */}
       <div className="w-1/2 relative p-16 flex flex-col justify-center overflow-hidden bg-gray-50 dark:bg-[#1E1E1E] transition-colors duration-500">
         <ShaderBackground />
@@ -283,14 +363,14 @@ export default function RegisterPage() {
       {/* SAĞ TARAF */}
       <div className="w-1/2 bg-white dark:bg-[#1A1A1A] p-12 flex flex-col justify-center relative transition-colors duration-500">
         <div className="max-w-sm mx-auto w-full">
-          
+
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-[#F8FAFC] mb-2">Hesap Oluştur</h2>
             <p className="text-gray-500 dark:text-[#CBD5E1] text-sm">Voia dünyasına adım atmak için bilgilerinizi girin.</p>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            
+          <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+
             <div className="flex gap-4">
               <div className="w-1/2">
                 <label className="block text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wide mb-1.5">
@@ -301,7 +381,7 @@ export default function RegisterPage() {
                   required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Örn: Selin"
+                  placeholder="Adınız"
                   className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
                 />
               </div>
@@ -314,7 +394,7 @@ export default function RegisterPage() {
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Örn: Aydın"
+                  placeholder="Soyadınız"
                   className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
                 />
               </div>
@@ -342,8 +422,9 @@ export default function RegisterPage() {
                 type="tel"
                 required
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="05551112233"
+                onChange={handlePhoneChange}
+                placeholder="0555 111 22 33"
+                maxLength={14} // 11 rakam + 3 boşluk
                 className="w-full bg-gray-50 dark:bg-[#1E1E1E] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
               />
             </div>
@@ -397,13 +478,12 @@ export default function RegisterPage() {
                   placeholder="Şifrenizi tekrar girin"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full bg-gray-50 dark:bg-[#1E1E1E] border px-4 py-2.5 rounded-xl text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 transition-colors ${
-                    isPasswordMismatch 
-                      ? 'border-red-300 focus:ring-red-200' 
-                      : isPasswordMatch 
-                      ? 'border-teal-300 dark:border-[#34D399] focus:ring-teal-200 dark:focus:ring-[#34D399]/20' 
-                      : 'border-gray-200 dark:border-white/10 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20'
-                  }`}
+                  className={`w-full bg-gray-50 dark:bg-[#1E1E1E] border px-4 py-2.5 rounded-xl text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 transition-colors ${isPasswordMismatch
+                      ? 'border-red-300 focus:ring-red-200'
+                      : isPasswordMatch
+                        ? 'border-teal-300 dark:border-[#34D399] focus:ring-teal-200 dark:focus:ring-[#34D399]/20'
+                        : 'border-gray-200 dark:border-white/10 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20'
+                    }`}
                 />
                 <button
                   type="button"
@@ -419,8 +499,16 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Hata Mesajı */}
             {error && (
-              <p className="text-red-500 dark:text-red-400 text-sm text-center font-medium mt-2">{error}</p>
+              <div className="flex items-start gap-3 p-4 mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1 font-medium leading-relaxed">
+                  {error}
+                </div>
+              </div>
             )}
 
             <button
@@ -446,7 +534,7 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
-      
+
     </div>
   );
 }

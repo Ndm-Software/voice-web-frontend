@@ -3,15 +3,16 @@
 import React, { useState, useRef, useEffect } from 'react'; // useEffect eklendi
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getUserProfile, deleteAccount } from '@/lib/api';
+// Eski hali: import { getUserProfile, deleteAccount, getLanguages, getUserSettings } from '@/lib/api';
+import { getUserProfile, deleteAccount, getLanguages, getUserSettings, updateUserSettings } from '@/lib/api';
 
 const INITIAL_FORM = {
-  name:      '',
-  email:     '',
-  phone:     '',
-  language:  'TR',
+  name: '',
+  email: '',
+  phone: '',
+  language: 'TR',
   notifTime: '30dk',
-  callTime:  'Aninda',
+  callTime: 'Aninda',
 };
 
 // Auth storage'ı temizleyen yardımcı fonksiyon.
@@ -25,45 +26,82 @@ const clearAuthStorage = () => {
   });
 };
 
+
+
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
 
-  const [form, setForm]           = useState(INITIAL_FORM);
-  const [saved, setSaved]         = useState(INITIAL_FORM);
-  const [loading, setLoading]     = useState(true); // Yüklenme state'i
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [saved, setSaved] = useState(INITIAL_FORM);
+  const [loading, setLoading] = useState(true); // Yüklenme state'i
   const [avatarSrc, setAvatarSrc] = useState(
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces'
   );
   const [toast, setToast] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [languages, setLanguages] = useState([]); // Sistemdeki tüm dilleri tutacak
+  const [userSettings, setUserSettings] = useState(null); // Kullanıcının mevcut ayarlarını tutacak
+
+  // Seçili ayarları formda anlık değiştirebilmek için ayrı bir state
+  const [preferences, setPreferences] = useState({
+    languageId: '',
+    defaultPushBefore: 30,
+    defaultCallBefore: 0
+  });
 
   // Sayfa açıldığında verileri backend'den çek
+  // Sayfa açıldığında verileri backend'den çek
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getUserProfile();
-        
-        // Backend'den gelen doğru değişken isimlerini kullanıyoruz (firstName, lastName, phoneNumber)
+        // 1. KULLANICI BİLGİLERİNİ ÇEK (Eksik olan kısmı buraya geri ekledik)
+        const userData = await getUserProfile();
+
         const backendData = {
           ...INITIAL_FORM,
-          name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
-          email: data.email || '',
-          phone: data.phoneNumber || '',
+          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+          email: userData.email || '',
+          phone: userData.phoneNumber || '',
         };
-        
         setForm(backendData);
         setSaved(backendData);
+
+        // 2. SİSTEMDEKİ DİLLERİ ÇEK
+        const langs = await getLanguages();
+        setLanguages(langs);
+
+        // 3. KULLANICININ AYARLARINI ÇEK
+        const settings = await getUserSettings();
+        if (settings) {
+          setUserSettings(settings);
+          setPreferences({
+            languageId: settings.languageId || (langs.length > 0 ? langs[0].languageId : ''),
+            defaultPushBefore: settings.defaultPushBefore || 30,
+            defaultCallBefore: settings.defaultCallBefore || 0
+          });
+
+          // Formdaki buton seçimlerini de kullanıcının ayarına göre güncelle
+          setForm(prev => ({
+            ...prev,
+            notifTime: settings.defaultPushBefore === 60 ? '1saat' : `${settings.defaultPushBefore}dk`,
+            callTime: settings.defaultCallBefore === 0 ? 'Aninda' : `${settings.defaultCallBefore}dk`
+          }));
+        } else {
+          // Eğer kullanıcının henüz ayarı yoksa (404 ise), varsayılan ilk dili seç
+          if (langs.length > 0) {
+            setPreferences(prev => ({ ...prev, languageId: langs[0].languageId }));
+          }
+        }
       } catch (error) {
-        console.error("Profil bilgileri alınamadı:", error);
-        showToast('Bilgiler alınırken bir hata oluştu.', 'error');
+        console.error("Veriler çekilirken hata:", error);
       } finally {
-        setLoading(false);
+        setLoading(false); // Yükleme ekranını kapat
       }
     };
 
-    fetchUser();
+    fetchData();
   }, []);
 
   const showToast = (message, type = 'success') => {
@@ -71,9 +109,40 @@ export default function ProfilePage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSave = () => {
-    setSaved({ ...form });
-    showToast('Değişiklikler başarıyla kaydedildi.');
+  const handleSave = async () => {
+    setLoading(true);
+
+    if (!preferences.languageId) {
+      showToast('Lütfen bir asistan dili seçin (Eğer seçenek yoksa sisteme dil eklenmelidir).', 'error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Formdaki metinsel değerleri (örn: '30dk') backend'in istediği sayılara (örn: 30) çeviriyoruz
+      const pushMinutes = form.notifTime === '1saat' ? 60 : parseInt(form.notifTime.replace('dk', '')) || 30;
+      const callMinutes = form.callTime === 'Aninda' ? 0 : parseInt(form.callTime.replace('dk', '')) || 0;
+
+      // API Dokümanındaki yapıya uygun veriyi hazırlıyoruz
+      const payload = {
+        languageId: preferences.languageId,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Tarayıcıdan otomatik saat dilimi alır (örn: Europe/Istanbul)
+        province: "İstanbul", // Şimdilik varsayılan, ileride formdan alınabilir
+        notificationsEnabled: true,
+        defaultPushBefore: pushMinutes,
+        defaultCallBefore: callMinutes
+      };
+
+      await updateUserSettings(payload);
+
+      setSaved({ ...form });
+      showToast('Değişiklikler başarıyla kaydedildi.');
+    } catch (error) {
+      console.error("Kaydetme hatası:", error);
+      showToast('Kaydedilemedi: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -102,15 +171,15 @@ export default function ProfilePage() {
   };
 
   const NOTIF_OPTS = [
-    { key: '15dk',   label: '15 dk önce' },
-    { key: '30dk',   label: '30 dk önce' },
-    { key: '1saat',  label: '1 saat önce' },
+    { key: '15dk', label: '15 dk önce' },
+    { key: '30dk', label: '30 dk önce' },
+    { key: '1saat', label: '1 saat önce' },
   ];
 
   const CALL_OPTS = [
-    { key: 'Aninda', label: 'Anında'    },
-    { key: '5dk',    label: '5 dk önce' },
-    { key: '10dk',   label: '10 dk önce'},
+    { key: 'Aninda', label: 'Anında' },
+    { key: '5dk', label: '5 dk önce' },
+    { key: '10dk', label: '10 dk önce' },
   ];
 
   if (loading) {
@@ -318,25 +387,29 @@ export default function ProfilePage() {
           </div>
 
           {/* Asistan Dili */}
-          <div className="mb-8">
-            <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Asistan Dili</label>
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
+              Asistan Dili
+            </label>
             <div className="flex flex-wrap gap-3">
-              {[{ key: 'TR', label: 'Türkçe (TR)' }, { key: 'EN', label: 'English (US)' }].map((lang) => (
+              {languages.map((lang) => (
                 <button
-                  key={lang.key}
-                  onClick={() => setForm({ ...form, language: lang.key })}
-                  className={`flex items-center px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all ${
-                    form.language === lang.key
-                      ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-2 border-[#0f4c3a] dark:border-[#00BBA7] text-[#0f4c3a] dark:text-[#00BBA7]'
-                      : 'bg-white dark:bg-[#1A1A1A]/30 border border-gray-200 dark:border-white/10 text-gray-600 dark:text-[#CBD5E1] font-medium hover:border-gray-300 dark:hover:border-[#71717A] hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
+                  key={lang.languageId}
+                  type="button"
+                  onClick={() => setPreferences({ ...preferences, languageId: lang.languageId })}
+                  className={`flex items-center px-4 py-2 rounded-xl border text-sm font-medium transition-all
+          ${preferences.languageId === lang.languageId
+                      ? 'border-[#0f4c3a] text-[#0f4c3a] bg-[#0f4c3a]/5 dark:border-[#00BBA7] dark:text-[#00BBA7] dark:bg-[#00BBA7]/10'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-white/10 dark:text-gray-400 dark:hover:border-white/20'
+                    }`}
                 >
-                  {form.language === lang.key && (
+                  {/* Seçiliyse check ikonu göster */}
+                  {preferences.languageId === lang.languageId && (
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
-                  {lang.label}
+                  {lang.name} ({lang.code}) {/* Örn: Türkçe (TR) */}
                 </button>
               ))}
             </div>
@@ -351,11 +424,10 @@ export default function ProfilePage() {
                   <button
                     key={opt.key}
                     onClick={() => setForm({ ...form, notifTime: opt.key })}
-                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${
-                      form.notifTime === opt.key
-                       ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
-                        : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
-                    }`}
+                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${form.notifTime === opt.key
+                      ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
+                      : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -371,11 +443,10 @@ export default function ProfilePage() {
                   <button
                     key={opt.key}
                     onClick={() => setForm({ ...form, callTime: opt.key })}
-                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${
-                      form.callTime === opt.key
-                       ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
-                        : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
-                    }`}
+                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${form.callTime === opt.key
+                      ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
+                      : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -387,7 +458,7 @@ export default function ProfilePage() {
 
         {/* BAĞLI CİHAZLAR KARTI */}
         <div className="bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
-          
+
           {/* Başlık Alanı */}
           <div className="flex items-center gap-2 mb-6">
             <svg className="w-5 h-5 text-[#0f4c3a] dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -397,12 +468,12 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-4">
-            
+
             {/* 1. Cihaz: WEB (Aktif olan cihaz) */}
             <div className="flex items-center justify-between p-4 rounded-xl border border-teal-100 dark:border-[#00BBA7]/20 bg-teal-50/30 dark:bg-[#00BBA7]/5 relative overflow-hidden">
               {/* Aktif cihaz sol yeşil çizgi vurgusu */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c3a] dark:bg-[#00BBA7]"></div>
-              
+
               <div className="flex items-center gap-4 pl-2">
                 <div className="w-11 h-11 rounded-full bg-teal-100 dark:bg-[#1A1A1A] flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm">
                   {/* Web/Masaüstü İkonu */}
@@ -430,11 +501,11 @@ export default function ProfilePage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Son görülme: 2 saat önce</p>
                 </div>
               </div>
-              
+
             </div>
           </div>
         </div>
-          
+
         {/* HESAP YÖNETİMİ KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           {/* Kart Başlığı */}

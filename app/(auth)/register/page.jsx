@@ -4,6 +4,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 // WebGL Animasyon Bileşeni (Açık/Koyu Moda Duyarlı)
 const ShaderBackground = () => {
   const canvasRef = useRef(null);
@@ -254,7 +256,7 @@ export default function RegisterPage() {
       const cleanPhoneNumber = phoneNumber.replace(/\s/g, '');
 
       // Backend'e kayıt isteği atılıyor
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      const response = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

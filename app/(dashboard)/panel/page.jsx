@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getUserProfile } from '@/lib/api';
+import { getUserProfile, getReminders } from '@/lib/api';
 
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -19,16 +19,15 @@ const CALENDAR_DAYS = [
 ];
 
 export default function DashboardPage() {
-  // --- YENİ EKLENEN KISIM: Gerçek Kullanıcı Stateleri ---
-  const [user, setUser] = useState(null);
+  const [user, setUser]               = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  // ------------------------------------------------------
+  const [reminders, setReminders]     = useState([]);
+  const [loadingRem, setLoadingRem]   = useState(true);
 
   const [calMonth, setCalMonth] = useState(9);
   const [calYear, setCalYear]   = useState(2023);
   const [selectedDay, setSelectedDay] = useState(11);
 
-  // --- YENİ EKLENEN KISIM: Backend'den Veri Çekme ---
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -41,9 +40,27 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchReminders = async () => {
+      try {
+        const data = await getReminders();
+        setReminders(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Hatırlatıcılar yüklenemedi:', err);
+      } finally {
+        setLoadingRem(false);
+      }
+    };
+
     fetchUser();
+    fetchReminders();
   }, []);
-  // ------------------------------------------------------
+
+  // Bugüne ait hatırlatıcılar
+  const today = new Date();
+  const upcomingReminders = reminders
+    .filter((r) => new Date(r.eventDatetime) >= today)
+    .sort((a, b) => new Date(a.eventDatetime) - new Date(b.eventDatetime))
+    .slice(0, 3);
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
@@ -79,7 +96,9 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-1">AKTİF HATIRLATICILAR</p>
-            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">12</p>
+            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">
+              {loadingRem ? '...' : reminders.length}
+            </p>
           </div>
         </Link>
 
@@ -127,41 +146,39 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-4">
-            {/* Hatırlatıcı 1 */}
-            <Link
-              href="/calendar"
-              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
-            >
-              <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
-              <div className="pl-12">
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">Doktor Randevusu - Diş Hekimi</h4>
-                <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">Bugün, 14:30 • Sesli Bildirim Açık</p>
+            {loadingRem ? (
+              <div className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center justify-center h-[76px] border border-gray-100 dark:border-white/10">
+                <span className="text-sm text-gray-400 dark:text-[#71717A]">Yükleniyor...</span>
               </div>
-            </Link>
-
-            {/* Hatırlatıcı 2 */}
-            <Link
-              href="/calendar"
-              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
-            >
-              <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
-              <div className="pl-12">
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">Market Alışveriş Listesi</h4>
-                <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">Yarın, 10:00 • Konum Bazlı</p>
+            ) : upcomingReminders.length === 0 ? (
+              <div className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center justify-center h-[76px] border border-gray-100 dark:border-white/10">
+                <span className="text-sm text-gray-400 dark:text-[#71717A]">Yakında planlanmış etkinlik yok.</span>
               </div>
-            </Link>
-
-            {/* Hatırlatıcı 3 */}
-            <Link
-              href="/calendar"
-              className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] opacity-70 hover:opacity-100 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
-            >
-              <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-gray-300 dark:bg-[#71717A]" />
-              <div className="pl-12">
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">Annemi Aramalıyım - Doğum Günü</h4>
-                <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">15 Ekim, 18:00 • Tekrarlayan</p>
-              </div>
-            </Link>
+            ) : (
+              upcomingReminders.map((r) => {
+                const dt = new Date(r.eventDatetime);
+                const isToday = dt.toDateString() === today.toDateString();
+                const dateLabel = isToday
+                  ? `Bugün, ${dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                  : `${dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}, ${dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+                const repeatLabel = r.repeatType === 'DAILY' ? 'Tekrarlıyor' : r.repeatType === 'WEEKLY' ? 'Haftalık' : '';
+                return (
+                  <Link
+                    key={r.reminderId || r.id}
+                    href="/calendar"
+                    className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
+                  >
+                    <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
+                    <div className="pl-12">
+                      <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] truncate max-w-[280px]">{r.title}</h4>
+                      <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">
+                        {dateLabel}{repeatLabel ? ` • ${repeatLabel}` : ''}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
 
             {/* Yeni Hatırlatıcı Ekle */}
             <Link

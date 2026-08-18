@@ -3,8 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'; // useEffect eklendi
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-// Eski hali: import { getUserProfile, deleteAccount, getLanguages, getUserSettings } from '@/lib/api';
-import { getUserProfile, deleteAccount, getLanguages, getUserSettings, updateUserSettings } from '@/lib/api';
+import { getUserProfile, deleteAccount, getLanguages, getUserSettings, updateUserSettings, updateUserProfile, getDevices, logout } from '@/lib/api';
 
 const INITIAL_FORM = {
   name: '',
@@ -13,6 +12,30 @@ const INITIAL_FORM = {
   language: 'TR',
   notifTime: '30dk',
   callTime: 'Aninda',
+};
+
+// Karmaşık User-Agent metnini temiz "İşletim Sistemi • Tarayıcı" formatına çevirir
+const formatDeviceName = (deviceName) => {
+  if (!deviceName) return "Bilinmeyen Cihaz";
+
+  // Eğer doğrudan temiz bir isim geldiyse (örn: "iPhone 14 Pro") dokunma
+  if (!deviceName.includes("Mozilla")) return deviceName;
+
+  let os = "Bilinmeyen OS";
+  if (deviceName.includes("Windows")) os = "Windows";
+  else if (deviceName.includes("Mac")) os = "macOS";
+  else if (deviceName.includes("Linux")) os = "Linux";
+  else if (deviceName.includes("Android")) os = "Android";
+  else if (deviceName.includes("iPhone") || deviceName.includes("iPad")) os = "iOS";
+
+  let browser = "Tarayıcı";
+  if (deviceName.includes("Edg")) browser = "Edge";
+  else if (deviceName.includes("Chrome")) browser = "Chrome";
+  else if (deviceName.includes("Firefox")) browser = "Firefox";
+  else if (deviceName.includes("Safari")) browser = "Safari";
+  else if (deviceName.includes("OPR") || deviceName.includes("Opera")) browser = "Opera";
+
+  return `${os} • ${browser}`;
 };
 
 // Auth storage'ı temizleyen yardımcı fonksiyon.
@@ -42,6 +65,8 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [languages, setLanguages] = useState([]); // Sistemdeki tüm dilleri tutacak
+  const [devices, setDevices] = useState([]); // Bağlı cihazları tutacak
+  const [createdAt, setCreatedAt] = useState(''); // Kullanıcının hesap oluşturma tarihini tutacak
   const [userSettings, setUserSettings] = useState(null); // Kullanıcının mevcut ayarlarını tutacak
 
   // Seçili ayarları formda anlık değiştirebilmek için ayrı bir state
@@ -56,7 +81,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. KULLANICI BİLGİLERİNİ ÇEK (Eksik olan kısmı buraya geri ekledik)
+        // 1. KULLANICI BİLGİLERİNİ ÇEK
         const userData = await getUserProfile();
 
         const backendData = {
@@ -67,6 +92,13 @@ export default function ProfilePage() {
         };
         setForm(backendData);
         setSaved(backendData);
+
+        // --- YENİ EKLENEN KISIM: Tarihi Türkçe formata çevir ---
+        if (userData.createdAt) {
+          const date = new Date(userData.createdAt);
+          setCreatedAt(date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }));
+        }
+        // --------------------------------------------------------
 
         // 2. SİSTEMDEKİ DİLLERİ ÇEK
         const langs = await getLanguages();
@@ -94,6 +126,11 @@ export default function ProfilePage() {
             setPreferences(prev => ({ ...prev, languageId: langs[0].languageId }));
           }
         }
+
+        // 4. KULLANICININ BAĞLI CİHAZLARINI ÇEK
+        const userDevices = await getDevices();
+        setDevices(userDevices);
+
       } catch (error) {
         console.error("Veriler çekilirken hata:", error);
       } finally {
@@ -112,6 +149,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setLoading(true);
 
+    // --- DİL KONTROLÜ (Aynı kalıyor) ---
     if (!preferences.languageId) {
       showToast('Lütfen bir asistan dili seçin (Eğer seçenek yoksa sisteme dil eklenmelidir).', 'error');
       setLoading(false);
@@ -119,29 +157,75 @@ export default function ProfilePage() {
     }
 
     try {
-      // Formdaki metinsel değerleri (örn: '30dk') backend'in istediği sayılara (örn: 30) çeviriyoruz
+      // 1. AYARLAR İÇİN VERİ HAZIRLIĞI
       const pushMinutes = form.notifTime === '1saat' ? 60 : parseInt(form.notifTime.replace('dk', '')) || 30;
       const callMinutes = form.callTime === 'Aninda' ? 0 : parseInt(form.callTime.replace('dk', '')) || 0;
 
-      // API Dokümanındaki yapıya uygun veriyi hazırlıyoruz
-      const payload = {
+      const settingsPayload = {
         languageId: preferences.languageId,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Tarayıcıdan otomatik saat dilimi alır (örn: Europe/Istanbul)
-        province: "İstanbul", // Şimdilik varsayılan, ileride formdan alınabilir
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        province: "İstanbul",
         notificationsEnabled: true,
         defaultPushBefore: pushMinutes,
         defaultCallBefore: callMinutes
       };
 
-      await updateUserSettings(payload);
+      // 2. PROFİL İÇİN VERİ HAZIRLIĞI
+      // "Kübra Bütün" gibi tek bir inputtan gelen veriyi API'nin istediği firstName ve lastName'e bölüyoruz
+      const nameParts = form.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Telefon numarasını temizle ve ülke kodu ekle
+      let formattedPhone = form.phone.replace(/\s/g, ''); // Boşlukları sil (Örn: 05555555555)
+
+      // Eğer numara 0 ile başlıyorsa, 0'ı sil ve +90 ekle (+905555555555)
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '+90' + formattedPhone.substring(1);
+      }
+      // Eğer numara + ile başlamıyorsa (direkt 555 girildiyse), başına +90 ekle
+      else if (!formattedPhone.startsWith('+')) {
+        formattedPhone = '+90' + formattedPhone;
+      }
+
+      const profilePayload = {
+        firstName,
+        lastName,
+        email: form.email,
+        phoneNumber: formattedPhone // Artık +90 formatında gidiyor
+      };
+
+      // 3. İKİ İSTEĞİ AYNI ANDA (PARALEL) SUNUCUYA GÖNDER
+      await Promise.all([
+        updateUserSettings(settingsPayload),
+        updateUserProfile(profilePayload)
+      ]);
 
       setSaved({ ...form });
-      showToast('Değişiklikler başarıyla kaydedildi.');
+      showToast('Tüm değişiklikler başarıyla kaydedildi.');
     } catch (error) {
       console.error("Kaydetme hatası:", error);
       showToast('Kaydedilemedi: ' + error.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Backend'e cihazı ve oturumu serbest bırakmasını söylüyoruz
+      await logout(); 
+    } catch (error) {
+      console.error("Çıkış yapılırken hata oluştu:", error);
+    } finally {
+      // 1. Standart tokenları temizle
+      clearAuthStorage();
+      
+      // 2. İŞTE EKSİK OLAN PARÇA: Cihaz ID'sini de hafızadan kesinlikle sil!
+      localStorage.removeItem('voia_installation_id');
+      
+      // 3. Anasayfaya yönlendir
+      router.push('/');
     }
   };
 
@@ -458,7 +542,6 @@ export default function ProfilePage() {
 
         {/* BAĞLI CİHAZLAR KARTI */}
         <div className="bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
-
           {/* Başlık Alanı */}
           <div className="flex items-center gap-2 mb-6">
             <svg className="w-5 h-5 text-[#0f4c3a] dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,41 +551,55 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-4">
+            {devices.length === 0 ? (
+              <p className="text-sm text-gray-500">Henüz bağlı bir cihaz bulunmuyor.</p>
+            ) : (
+              devices.map((device) => (
+                <div
+                  key={device.deviceId}
+                  className={`flex items-center justify-between p-4 rounded-xl relative overflow-hidden transition-colors group
+                    ${device.isActive
+                      ? 'border border-teal-100 dark:border-[#00BBA7]/20 bg-teal-50/30 dark:bg-[#00BBA7]/5'
+                      : 'border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#27272A]/50 hover:bg-white dark:hover:bg-[#2A2A2A]'
+                    }`}
+                >
+                  {/* Aktif cihaz sol yeşil çizgi vurgusu */}
+                  {device.isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c3a] dark:bg-[#00BBA7]"></div>
+                  )}
 
-            {/* 1. Cihaz: WEB (Aktif olan cihaz) */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-teal-100 dark:border-[#00BBA7]/20 bg-teal-50/30 dark:bg-[#00BBA7]/5 relative overflow-hidden">
-              {/* Aktif cihaz sol yeşil çizgi vurgusu */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c3a] dark:bg-[#00BBA7]"></div>
-
-              <div className="flex items-center gap-4 pl-2">
-                <div className="w-11 h-11 rounded-full bg-teal-100 dark:bg-[#1A1A1A] flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm">
-                  {/* Web/Masaüstü İkonu */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  <div className="flex items-center gap-4 pl-2">
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-sm transition-colors
+                      ${device.isActive
+                        ? 'bg-teal-100 dark:bg-[#1A1A1A] text-[#0f4c3a] dark:text-[#00BBA7]'
+                        : 'bg-gray-200 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300'
+                      }`}
+                    >
+                      {/* Platform'a göre ikon (WEB ise bilgisayar, değilse telefon) */}
+                      {device.platform === 'WEB' ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold flex items-center gap-2 ${device.isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+                        {formatDeviceName(device.deviceName)}
+                        {device.isActive && (
+                          <span className="bg-teal-100 text-teal-800 dark:bg-[#00BBA7]/20 dark:text-[#00BBA7] text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Aktif</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {device.isActive
+                          ? 'Şu an bu cihazdasınız'
+                          : `Son görülme: ${new Date(device.lastActive).toLocaleDateString('tr-TR')} ${new Date(device.lastActive).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    Windows 11 • Tarayıcı (Web)
-                    <span className="bg-teal-100 text-teal-800 dark:bg-[#00BBA7]/20 dark:text-[#00BBA7] text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Aktif</span>
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">İstanbul, Türkiye • Chrome</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Cihaz: MOBİL */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#27272A]/50 hover:bg-white dark:hover:bg-[#2A2A2A] transition-colors group">
-              <div className="flex items-center gap-4 pl-2">
-                <div className="w-11 h-11 rounded-full bg-gray-200 dark:bg-[#1A1A1A] flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
-                  {/* Mobil Telefon İkonu */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">iPhone 14 Pro • Voia App</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Son görülme: 2 saat önce</p>
-                </div>
-              </div>
-
-            </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -531,7 +628,7 @@ export default function ProfilePage() {
                   </div>
                   <span className="text-sm font-medium text-gray-500 dark:text-[#71717A]">Hesap Oluşturma Tarihi</span>
                 </div>
-                <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">12 Ocak 2024</span>
+                <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{createdAt || '-'}</span>
               </div>
               {/* Son Giriş */}
               <div className="flex items-center justify-between px-4 py-2.5">
@@ -543,7 +640,7 @@ export default function ProfilePage() {
                   </div>
                   <span className="text-sm font-medium text-gray-500 dark:text-[#71717A]">Son Giriş</span>
                 </div>
-                <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">Bugün, 22:31</span>
+                <span className="text-sm font-bold text-teal-600 dark:text-[#00BBA7]">Şu an aktif</span>
               </div>
             </div>
           </div>
@@ -565,10 +662,11 @@ export default function ProfilePage() {
                 </svg>
                 Hesabı Sil
               </button>
+              {/* Eski Hali: onClick={() => router.push('/')} */}
               <button
                 id="btn-logout"
                 type="button"
-                onClick={() => router.push('/')}
+                onClick={handleLogout}
                 className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-[#71717A]/20 hover:bg-gray-200 dark:hover:bg-[#71717A]/30 text-gray-700 dark:text-[#CBD5E1] font-bold rounded-xl text-sm transition-all active:scale-[0.98]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

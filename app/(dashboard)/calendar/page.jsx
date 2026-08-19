@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getReminders } from '@/lib/api';
 
 const VIEWS = ['Gün', 'Hafta', 'Ay'];
 
@@ -12,29 +13,31 @@ const MONTHS = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-const REMINDERS = [
-  {
-    id: 1, day: 11, tag: 'İŞ', tagClass: 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white',
-    time: '09:30', title: 'Marketing Sync Call',
-    subIcon: 'users', sub: 'Çok Dilli Deşifre Aktif',
-  },
-  {
-    id: 2, day: 11, tag: 'KİŞİSEL', tagClass: 'bg-teal-500 dark:bg-[#34D399] text-white dark:text-[#0F172A]',
-    time: '14:15', title: 'Diş Randevusu',
-    subIcon: 'location', sub: 'Şehir Diş Merkezi',
-  },
-  {
-    id: 3, day: 11, tag: 'İŞ', tagClass: 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white',
-    time: '16:45', title: 'Almanca Brief Çevirileri',
-    subIcon: 'globe', sub: 'Voia AI Entegrasyonu',
-  },
-];
-
 export default function CalendarPage() {
-  const [activeView, setActiveView] = useState('Ay');
-  const [selectedDay, setSelectedDay] = useState(11);
-  const [calMonth, setCalMonth] = useState(9);
-  const [calYear, setCalYear] = useState(2023);
+  const today = new Date();
+  const [activeView, setActiveView]   = useState('Ay');
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [calMonth, setCalMonth]       = useState(today.getMonth());
+  const [calYear, setCalYear]         = useState(today.getFullYear());
+
+  // Gerçek hatırlatıcı verisi
+  const [reminders, setReminders]     = useState([]);
+  const [loadingRem, setLoadingRem]   = useState(true);
+
+  // Sayfa açılışında hatırlatıcıları çek
+  useEffect(() => {
+    const fetchReminders = async () => {
+      try {
+        const data = await getReminders();
+        setReminders(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Hatırlatıcılar yüklenemedi:', err);
+      } finally {
+        setLoadingRem(false);
+      }
+    };
+    fetchReminders();
+  }, []);
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
@@ -45,7 +48,25 @@ export default function CalendarPage() {
     else setCalMonth((m) => m + 1);
   };
 
-  const dayReminders = REMINDERS.filter((r) => r.day === selectedDay);
+  // Seçili güne ait hatırlatıcıları filtrele
+  const dayReminders = reminders.filter((r) => {
+    const d = new Date(r.eventDatetime);
+    return (
+      d.getFullYear() === calYear &&
+      d.getMonth()    === calMonth &&
+      d.getDate()     === selectedDay
+    );
+  });
+
+  // Hangi günlerde etkinlik var? (takvim noktası için)
+  const daysWithReminders = new Set(
+    reminders
+      .filter((r) => {
+        const d = new Date(r.eventDatetime);
+        return d.getFullYear() === calYear && d.getMonth() === calMonth;
+      })
+      .map((r) => new Date(r.eventDatetime).getDate())
+  );
 
   return (
     <div className="w-full max-w-[1100px] mx-auto flex gap-8">
@@ -225,19 +246,24 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* SAĞ: Günün Detayları */}
+          {/* Seçili Günün Detayları */}
       <div className="flex-1 flex flex-col">
         <div className="mb-6">
           <h3 className="text-xl font-bold text-[#0f4c3a] dark:text-[#00BBA7]">
-            {selectedDay} {MONTHS[calMonth]}, {['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'][(selectedDay + 1) % 7]}
+            {selectedDay} {MONTHS[calMonth]}, {calYear}
           </h3>
           <p className="text-gray-500 dark:text-[#CBD5E1] text-sm mt-1">
-            {dayReminders.length > 0 ? `${dayReminders.length} Hatırlatıcı Planlandı` : 'Planlanmış etkinlik yok'}
+            {loadingRem
+              ? 'Yükleniyor...'
+              : dayReminders.length > 0
+                ? `${dayReminders.length} Hatırlatıcı Planlandı`
+                : 'Planlanmış etkinlik yok'
+            }
           </p>
         </div>
 
         <div className="flex-1 space-y-4">
-          {dayReminders.length === 0 && (
+          {!loadingRem && dayReminders.length === 0 && (
             <div className="bg-white dark:bg-[#27272A] rounded-xl p-8 border border-gray-100 dark:border-white/10 shadow-sm text-center">
               <p className="text-gray-400 dark:text-[#71717A] text-sm font-medium mb-4">Bu gün için etkinlik yok.</p>
               <Link
@@ -252,39 +278,27 @@ export default function CalendarPage() {
             </div>
           )}
 
-          {dayReminders.map((r) => (
-            <div
-              key={r.id}
-              className="bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide ${r.tagClass}`}>
-                  {r.tag}
-                </span>
-                <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{r.time}</span>
+          {dayReminders.map((r) => {
+            const dt    = new Date(r.eventDatetime);
+            const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            return (
+              <div
+                key={r.reminderId || r.id}
+                className="bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide bg-[#0f4c3a] dark:bg-[#00BBA7] text-white">
+                    {r.repeatType === 'ONCE' ? 'TEK' : r.repeatType === 'DAILY' ? 'GÜNLÜK' : 'HAFTALIK'}
+                  </span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{timeStr}</span>
+                </div>
+                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2">{r.title}</h4>
+                {r.description && (
+                  <p className="text-gray-500 dark:text-[#CBD5E1] text-[13px]">{r.description}</p>
+                )}
               </div>
-              <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2">{r.title}</h4>
-              <div className="flex items-center text-gray-500 dark:text-[#CBD5E1] text-[13px]">
-                {r.subIcon === 'users' && (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                )}
-                {r.subIcon === 'location' && (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                )}
-                {r.subIcon === 'globe' && (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                )}
-                {r.sub}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

@@ -110,8 +110,7 @@ export default function NewReminderPage() {
     setLoading(true);
     try {
       await createReminder(payload);
-      showToast('Hatırlatıcı başarıyla kaydedildi!');
-      setTimeout(() => router.push('/calendar'), 1500);
+      router.push('/calendar');
     } catch (err) {
       console.error('Hatırlatıcı kaydedilemedi:', err);
       setError(err.message || 'Hatırlatıcı kaydedilemedi. Lütfen tekrar deneyin.');

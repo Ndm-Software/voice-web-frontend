@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import GlobalNotification from '@/components/GlobalNotification';
 
 // Auth storage'ı temizleyen yardımcı fonksiyon.
 // Projedeki token key'i backend entegrasyonuna göre belirleneceğinden

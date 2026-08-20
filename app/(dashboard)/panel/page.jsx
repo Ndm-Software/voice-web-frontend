@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getUserProfile, getReminders } from '@/lib/api';
-
+import { getUserProfile, getReminders, updateDevice } from '@/lib/api';
+import { requestPushPermissionAndGetToken } from '@/lib/firebase';
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
@@ -49,10 +49,43 @@ export default function DashboardPage() {
       } finally {
         setLoadingRem(false);
       }
+    };    
+
+    const initFirebaseAndRegisterDevice = async () => {
+      try {
+        // 1. Firebase'den token al (Kullanıcı izin verirse)
+        const fcmToken = await requestPushPermissionAndGetToken();
+        
+        // 2. Cihaz bilgilerini toparla
+        // (E-postaya özel UUID'yi login sırasında localStorage'a kaydetmiştik)
+        // Eğer dashboard'da email bilgisine erişemiyorsan, login'de kaydettiğimiz ortak bir key'i kullanabiliriz.
+        // Şimdilik Voia'nın genel cihaz id'sini alalım:
+        let installationId = localStorage.getItem('voia_installation_id');
+        
+        if (!installationId) {
+            installationId = crypto.randomUUID();
+            localStorage.setItem('voia_installation_id', installationId);
+        }
+
+        const deviceData = {
+          installationId: installationId,
+          platform: "WEB",
+          deviceName: window.navigator.userAgent.substring(0, 99) || "Web Browser",
+          pushToken: fcmToken || null // Eğer token alınamadıysa null gider
+        };
+
+        // 3. Backend'e gönder
+        await updateDevice(deviceData);
+        console.log("Cihaz bilgileri ve Token backend'e başarıyla iletildi!");
+
+      } catch (error) {
+        console.error("Cihaz kaydedilirken hata oluştu:", error);
+      }
     };
 
     fetchUser();
     fetchReminders();
+    initFirebaseAndRegisterDevice(); // Fonksiyonu çağırıyoruz
   }, []);
 
   // Bugüne ait hatırlatıcılar

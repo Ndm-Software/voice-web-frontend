@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react'; // useEffect eklendi
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getUserProfile, deleteAccount, getLanguages, getUserSettings, updateUserSettings, updateUserProfile, getDevices, logout } from '@/lib/api';
+import { removePushToken } from '@/lib/firebase';
 
 const INITIAL_FORM = {
   name: '',
@@ -18,7 +19,6 @@ const INITIAL_FORM = {
 const formatDeviceName = (deviceName) => {
   if (!deviceName) return "Bilinmeyen Cihaz";
 
-  // Eğer doğrudan temiz bir isim geldiyse (örn: "iPhone 14 Pro") dokunma
   if (!deviceName.includes("Mozilla")) return deviceName;
 
   let os = "Bilinmeyen OS";
@@ -38,9 +38,6 @@ const formatDeviceName = (deviceName) => {
   return `${os} • ${browser}`;
 };
 
-// Auth storage'ı temizleyen yardımcı fonksiyon.
-// Projedeki token key'i backend entegrasyonuna göre belirleneceğinden
-// yaygın kullanılan tüm key'ler temizleniyor.
 const clearAuthStorage = () => {
   const AUTH_KEYS = ['token', 'access_token', 'refresh_token', 'authToken', 'auth', 'user'];
   AUTH_KEYS.forEach((key) => {
@@ -49,35 +46,30 @@ const clearAuthStorage = () => {
   });
 };
 
-
-
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState(INITIAL_FORM);
   const [saved, setSaved] = useState(INITIAL_FORM);
-  const [loading, setLoading] = useState(true); // Yüklenme state'i
+  const [loading, setLoading] = useState(true);
   const [avatarSrc, setAvatarSrc] = useState(
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces'
   );
   const [toast, setToast] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [languages, setLanguages] = useState([]); // Sistemdeki tüm dilleri tutacak
-  const [devices, setDevices] = useState([]); // Bağlı cihazları tutacak
-  const [createdAt, setCreatedAt] = useState(''); // Kullanıcının hesap oluşturma tarihini tutacak
-  const [userSettings, setUserSettings] = useState(null); // Kullanıcının mevcut ayarlarını tutacak
+  const [languages, setLanguages] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [createdAt, setCreatedAt] = useState('');
+  const [userSettings, setUserSettings] = useState(null);
 
-  // Seçili ayarları formda anlık değiştirebilmek için ayrı bir state
   const [preferences, setPreferences] = useState({
     languageId: '',
     defaultPushBefore: 30,
     defaultCallBefore: 0
   });
 
-  // Sayfa açıldığında verileri backend'den çek
-  // Sayfa açıldığında verileri backend'den çek
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -93,35 +85,50 @@ export default function ProfilePage() {
         setForm(backendData);
         setSaved(backendData);
 
-        // --- YENİ EKLENEN KISIM: Tarihi Türkçe formata çevir ---
         if (userData.createdAt) {
           const date = new Date(userData.createdAt);
           setCreatedAt(date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }));
         }
-        // --------------------------------------------------------
 
         // 2. SİSTEMDEKİ DİLLERİ ÇEK
-        const langs = await getLanguages();
-        setLanguages(langs);
+        let langs = await getLanguages();
+        if (langs && langs.length > 0) {
+          // 'TR' kodlu dili her zaman listenin en başına (sola) al
+          langs = langs.sort((a, b) => {
+            if (a.code.toUpperCase() === 'TR') return -1;
+            if (b.code.toUpperCase() === 'TR') return 1;
+            return a.name.localeCompare(b.name); // Diğer dilleri alfabetik sırala
+          });
+        }
+        setLanguages(langs || []);
 
         // 3. KULLANICININ AYARLARINI ÇEK
         const settings = await getUserSettings();
+        
+        // Hatanın gerçek sebebini görmek için konsola yazdırıyoruz
+        console.log("Backend'den gelen ayarlar:", settings); 
+
         if (settings) {
           setUserSettings(settings);
+          
+          // Backend'den gelen seçili dili güvenli bir şekilde bul (Obje içinde nested gelebilir)
+          const savedLangId = settings.languageId || settings.language?.languageId || settings.language?.id;
+
           setPreferences({
-            languageId: settings.languageId || (langs.length > 0 ? langs[0].languageId : ''),
+            // Eğer veritabanında kullanıcının kaydettiği bir dil varsa KESİNLİKLE ONU KULLAN
+            // Hiç ayar yoksa (ilk kez giriyorsa) listedeki ilk dili varsayılan yap
+            languageId: savedLangId || (langs.length > 0 ? langs[0].languageId : ''),
             defaultPushBefore: settings.defaultPushBefore || 30,
             defaultCallBefore: settings.defaultCallBefore || 0
           });
 
-          // Formdaki buton seçimlerini de kullanıcının ayarına göre güncelle
           setForm(prev => ({
             ...prev,
             notifTime: settings.defaultPushBefore === 60 ? '1saat' : `${settings.defaultPushBefore}dk`,
             callTime: settings.defaultCallBefore === 0 ? 'Aninda' : `${settings.defaultCallBefore}dk`
           }));
         } else {
-          // Eğer kullanıcının henüz ayarı yoksa (404 ise), varsayılan ilk dili seç
+          // Eğer kullanıcının henüz hiçbir ayar kaydı yoksa
           if (langs.length > 0) {
             setPreferences(prev => ({ ...prev, languageId: langs[0].languageId }));
           }
@@ -129,12 +136,12 @@ export default function ProfilePage() {
 
         // 4. KULLANICININ BAĞLI CİHAZLARINI ÇEK
         const userDevices = await getDevices();
-        setDevices(userDevices);
+        setDevices(userDevices || []);
 
       } catch (error) {
         console.error("Veriler çekilirken hata:", error);
       } finally {
-        setLoading(false); // Yükleme ekranını kapat
+        setLoading(false);
       }
     };
 
@@ -149,7 +156,6 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setLoading(true);
 
-    // --- DİL KONTROLÜ (Aynı kalıyor) ---
     if (!preferences.languageId) {
       showToast('Lütfen bir asistan dili seçin (Eğer seçenek yoksa sisteme dil eklenmelidir).', 'error');
       setLoading(false);
@@ -157,7 +163,6 @@ export default function ProfilePage() {
     }
 
     try {
-      // 1. AYARLAR İÇİN VERİ HAZIRLIĞI
       const pushMinutes = form.notifTime === '1saat' ? 60 : parseInt(form.notifTime.replace('dk', '')) || 30;
       const callMinutes = form.callTime === 'Aninda' ? 0 : parseInt(form.callTime.replace('dk', '')) || 0;
 
@@ -170,21 +175,15 @@ export default function ProfilePage() {
         defaultCallBefore: callMinutes
       };
 
-      // 2. PROFİL İÇİN VERİ HAZIRLIĞI
-      // "Kübra Bütün" gibi tek bir inputtan gelen veriyi API'nin istediği firstName ve lastName'e bölüyoruz
       const nameParts = form.name.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Telefon numarasını temizle ve ülke kodu ekle
-      let formattedPhone = form.phone.replace(/\s/g, ''); // Boşlukları sil (Örn: 05555555555)
+      let formattedPhone = form.phone.replace(/\s/g, ''); 
 
-      // Eğer numara 0 ile başlıyorsa, 0'ı sil ve +90 ekle (+905555555555)
       if (formattedPhone.startsWith('0')) {
         formattedPhone = '+90' + formattedPhone.substring(1);
-      }
-      // Eğer numara + ile başlamıyorsa (direkt 555 girildiyse), başına +90 ekle
-      else if (!formattedPhone.startsWith('+')) {
+      } else if (!formattedPhone.startsWith('+')) {
         formattedPhone = '+90' + formattedPhone;
       }
 
@@ -192,10 +191,9 @@ export default function ProfilePage() {
         firstName,
         lastName,
         email: form.email,
-        phoneNumber: formattedPhone // Artık +90 formatında gidiyor
+        phoneNumber: formattedPhone 
       };
 
-      // 3. İKİ İSTEĞİ AYNI ANDA (PARALEL) SUNUCUYA GÖNDER
       await Promise.all([
         updateUserSettings(settingsPayload),
         updateUserProfile(profilePayload)
@@ -213,18 +211,16 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      // Backend'e cihazı ve oturumu serbest bırakmasını söylüyoruz
+      // 1. Önce Firebase token'ını sil (Böylece yeni giren kişi taze token alacak)
+      await removePushToken();
+      
+      // 2. Backend'e çıkış isteği at
       await logout(); 
     } catch (error) {
       console.error("Çıkış yapılırken hata oluştu:", error);
     } finally {
-      // 1. Standart tokenları temizle
       clearAuthStorage();
-      
-      // 2. İŞTE EKSİK OLAN PARÇA: Cihaz ID'sini de hafızadan kesinlikle sil!
-      localStorage.removeItem('voia_installation_id');
-      
-      // 3. Anasayfaya yönlendir
+      localStorage.removeItem('voia_active_installation_id'); // Standart temizlik
       router.push('/');
     }
   };
@@ -303,7 +299,6 @@ export default function ProfilePage() {
 
           {/* Modal Kart */}
           <div className="relative w-full max-w-md bg-white dark:bg-[#27272A] rounded-2xl border border-gray-100 dark:border-white/10 shadow-2xl p-8 animate-[fadeInScale_0.18s_ease-out]">
-            {/* Kapat butonu */}
             <button
               onClick={() => setShowDeleteConfirm(false)}
               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-[#71717A] hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-600 dark:hover:text-[#CBD5E1] transition-all"
@@ -314,25 +309,21 @@ export default function ProfilePage() {
               </svg>
             </button>
 
-            {/* İkon */}
             <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center mb-5">
               <svg className="w-7 h-7 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
 
-            {/* Başlık */}
             <h3 id="delete-modal-title" className="text-lg font-bold text-gray-900 dark:text-[#F8FAFC] mb-3">
               Hesabı Sil
             </h3>
 
-            {/* Mesaj */}
             <p className="text-sm text-gray-500 dark:text-[#CBD5E1] leading-relaxed mb-7">
               Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve{' '}
               <span className="font-semibold text-red-500 dark:text-red-400">tüm verileriniz kalıcı olarak silinir.</span>
             </p>
 
-            {/* Butonlar */}
             <div className="flex items-center gap-3">
               <button
                 id="btn-cancel-delete"
@@ -390,7 +381,6 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center">
               <div className="relative w-32 h-32 rounded-2xl bg-gray-100 dark:bg-[#71717A]/30 border border-gray-200 dark:border-white/10 overflow-hidden mb-3">
                 <img src={avatarSrc} alt="Profil" className="w-full h-full object-cover" />
-                {/* Gizli dosya input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -454,7 +444,7 @@ export default function ProfilePage() {
                   <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-[10px] font-bold tracking-wide">DOĞRULANDII</span>
+                  <span className="text-[10px] font-bold tracking-wide">DOĞRULANDI</span>
                 </div>
               </div>
             </div>
@@ -487,13 +477,12 @@ export default function ProfilePage() {
                       : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-white/10 dark:text-gray-400 dark:hover:border-white/20'
                     }`}
                 >
-                  {/* Seçiliyse check ikonu göster */}
                   {preferences.languageId === lang.languageId && (
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
-                  {lang.name} ({lang.code}) {/* Örn: Türkçe (TR) */}
+                  {lang.name} ({lang.code})
                 </button>
               ))}
             </div>
@@ -542,7 +531,6 @@ export default function ProfilePage() {
 
         {/* BAĞLI CİHAZLAR KARTI */}
         <div className="bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-white/5 rounded-2xl p-6 md:p-8 mb-8 shadow-sm">
-          {/* Başlık Alanı */}
           <div className="flex items-center gap-2 mb-6">
             <svg className="w-5 h-5 text-[#0f4c3a] dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
@@ -563,7 +551,6 @@ export default function ProfilePage() {
                       : 'border border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#27272A]/50 hover:bg-white dark:hover:bg-[#2A2A2A]'
                     }`}
                 >
-                  {/* Aktif cihaz sol yeşil çizgi vurgusu */}
                   {device.isActive && (
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c3a] dark:bg-[#00BBA7]"></div>
                   )}
@@ -575,7 +562,6 @@ export default function ProfilePage() {
                         : 'bg-gray-200 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300'
                       }`}
                     >
-                      {/* Platform'a göre ikon (WEB ise bilgisayar, değilse telefon) */}
                       {device.platform === 'WEB' ? (
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                       ) : (
@@ -605,7 +591,6 @@ export default function ProfilePage() {
 
         {/* HESAP YÖNETİMİ KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
-          {/* Kart Başlığı */}
           <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold text-lg mb-6">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -614,11 +599,9 @@ export default function ProfilePage() {
             Hesap Yönetimi
           </div>
 
-          {/* Hesap Bilgileri Bölümü */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Hesap Bilgileri</label>
             <div className="bg-gray-50/50 dark:bg-[#1A1A1A]/40 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
-              {/* Hesap Oluşturma Tarihi */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-white/5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center">
@@ -630,7 +613,6 @@ export default function ProfilePage() {
                 </div>
                 <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{createdAt || '-'}</span>
               </div>
-              {/* Son Giriş */}
               <div className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center">
@@ -645,10 +627,8 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Ayırıcı */}
           <div className="border-t border-gray-100 dark:border-white/10 mb-6" />
 
-          {/* Butonlar + Onay Kutusu */}
           <div>
             <div className="flex items-center gap-4">
               <button
@@ -662,7 +642,6 @@ export default function ProfilePage() {
                 </svg>
                 Hesabı Sil
               </button>
-              {/* Eski Hali: onClick={() => router.push('/')} */}
               <button
                 id="btn-logout"
                 type="button"
@@ -678,7 +657,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ALT BUTONLAR — "Hesabı Sil" KALDIRILDI */}
         <div className="flex items-center justify-end pt-4">
           <div className="flex items-center gap-4">
             <button

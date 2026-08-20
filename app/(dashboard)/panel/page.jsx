@@ -4,30 +4,24 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getUserProfile, getReminders, updateDevice } from '@/lib/api';
 import { requestPushPermissionAndGetToken } from '@/lib/firebase';
+
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-// Takvim verisi (Şimdilik mock kalabilir, ileride backend'e bağlanır)
-const CALENDAR_DAYS = [
-  { day: 27, prev: true }, { day: 28, prev: true }, { day: 29, prev: true }, { day: 30, prev: true },
-  { day: 1 }, { day: 2 }, { day: 3 },
-  { day: 4 }, { day: 5 }, { day: 6 }, { day: 7 }, { day: 8 }, { day: 9 }, { day: 10 },
-  { day: 11, today: true, hasEvent: true }, { day: 12 }, { day: 13 }, { day: 14 },
-  { day: 15, hasDot: true },
-];
-
 export default function DashboardPage() {
-  const [user, setUser]               = useState(null);
+  const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [reminders, setReminders]     = useState([]);
-  const [loadingRem, setLoadingRem]   = useState(true);
+  const [reminders, setReminders] = useState([]);
+  const [loadingRem, setLoadingRem] = useState(true);
 
-  const [calMonth, setCalMonth] = useState(9);
-  const [calYear, setCalYear]   = useState(2023);
-  const [selectedDay, setSelectedDay] = useState(11);
+  // Gerçek zamanlı başlangıç tarihleri
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
 
+  // 1. KULLANICI VE HATIRLATICI VERİLERİNİ ÇEKME
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -49,44 +43,46 @@ export default function DashboardPage() {
       } finally {
         setLoadingRem(false);
       }
-    };    
-
-    const initFirebaseAndRegisterDevice = async () => {
-      try {
-        // 1. Firebase'den token al (Kullanıcı izin verirse)
-        const fcmToken = await requestPushPermissionAndGetToken();
-        
-        // 2. Cihaz bilgilerini toparla
-        // (E-postaya özel UUID'yi login sırasında localStorage'a kaydetmiştik)
-        // Eğer dashboard'da email bilgisine erişemiyorsan, login'de kaydettiğimiz ortak bir key'i kullanabiliriz.
-        // Şimdilik Voia'nın genel cihaz id'sini alalım:
-        let installationId = localStorage.getItem('voia_installation_id');
-        
-        if (!installationId) {
-            installationId = crypto.randomUUID();
-            localStorage.setItem('voia_installation_id', installationId);
-        }
-
-        const deviceData = {
-          installationId: installationId,
-          platform: "WEB",
-          deviceName: window.navigator.userAgent.substring(0, 99) || "Web Browser",
-          pushToken: fcmToken || null // Eğer token alınamadıysa null gider
-        };
-
-        // 3. Backend'e gönder
-        await updateDevice(deviceData);
-        console.log("Cihaz bilgileri ve Token backend'e başarıyla iletildi!");
-
-      } catch (error) {
-        console.error("Cihaz kaydedilirken hata oluştu:", error);
-      }
     };
 
     fetchUser();
     fetchReminders();
-    initFirebaseAndRegisterDevice(); // Fonksiyonu çağırıyoruz
-  }, []);
+  }, []); // İlk UseEffect Bitişi
+
+  // 2. FİREBASE VE CİHAZ KAYDI
+  useEffect(() => {
+    const initFirebaseAndRegisterDevice = async () => {
+      let pushToken = null; 
+
+      try {
+        pushToken = await requestPushPermissionAndGetToken();
+      } catch (firebaseError) {
+        console.warn("Firebase hatası:", firebaseError.message);
+      }
+
+      // 2. AŞAMA: Backend'e Kayıt İşlemi
+        try {
+          if (pushToken) {
+            await updateDevice({
+              installationId: localStorage.getItem('voia_installation_id') || "Bilinmeyen-ID",
+              platform: 'WEB',
+              deviceName: window.navigator.userAgent.substring(0, 99),
+              pushToken: pushToken
+            });
+            console.log("Cihaz ve push token başarıyla kaydedildi!");
+          }
+        } catch (apiError) {
+          // 409 Hatasını sessizce yakala ve konsolu kırmızıya boyama
+          if (apiError?.status === 409) {
+            console.warn("Sistem Notu: Bu tarayıcıdaki token zaten aktif. Uygulama normal çalışmasına devam ediyor.");
+          } else {
+            console.error("Cihaz kaydedilirken hata:", apiError);
+          }
+        }
+    };
+
+    initFirebaseAndRegisterDevice();
+  }, []); // İkinci UseEffect Bitişi
 
   // Bugüne ait hatırlatıcılar
   const today = new Date();
@@ -105,19 +101,51 @@ export default function DashboardPage() {
     else setCalMonth((m) => m + 1);
   };
 
+  // --- DİNAMİK TAKVİM HESAPLAMA MANTIĞI ---
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => {
+    let day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Haftayı Pazartesiden (0) başlat
+  };
+
+  const daysInMonth = getDaysInMonth(calYear, calMonth);
+  const firstDay = getFirstDayOfMonth(calYear, calMonth);
+  const daysInPrevMonth = getDaysInMonth(calYear, calMonth - 1);
+
+  const calendarCells = [];
+
+  for (let i = firstDay - 1; i >= 0; i--) {
+    calendarCells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
+  }
+
+  const currentDate = new Date(); 
+  for (let i = 1; i <= daysInMonth; i++) {
+    const hasReminder = reminders.some(r => {
+      const d = new Date(r.eventDatetime);
+      return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === i;
+    });
+
+    const isToday = currentDate.getFullYear() === calYear && currentDate.getMonth() === calMonth && currentDate.getDate() === i;
+
+    calendarCells.push({ day: i, isCurrentMonth: true, isToday, hasReminder });
+  }
+
+  const totalCells = calendarCells.length;
+  const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+  for (let i = 1; i <= remainingCells; i++) {
+    calendarCells.push({ day: i, isCurrentMonth: false });
+  }
+
   return (
     <div className="w-full max-w-[1000px] mx-auto">
-
-      {/* --- GÜNCELLENEN KISIM: Dinamik Karşılama Başlığı --- */}
       <div className="mb-8">
         <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">
-          {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName  || 'Kullanıcı'}!`}
+          {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName || 'Kullanıcı'}!`}
         </h2>
         <p className="text-gray-500 dark:text-[#CBD5E1] text-[15px]">
           İşte bugün için planladıkların ve asistanının notları.
         </p>
       </div>
-      {/* ------------------------------------------------------ */}
 
       {/* Üst İstatistik Kartları */}
       <div className="grid grid-cols-3 gap-6 mb-10">
@@ -160,17 +188,11 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Alt İçerik Izgarası */}
       <div className="grid grid-cols-3 gap-8">
-
-        {/* SOL BÖLÜM: Yaklaşan Hatırlatıcılar */}
         <div className="col-span-2">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-base font-bold text-gray-800 dark:text-[#F8FAFC]">Yaklaşan Hatırlatıcılar</h3>
-            <Link
-              href="/history"
-              className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline flex items-center"
-            >
+            <Link href="/history" className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline flex items-center">
               Tümünü Gör
               <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -213,7 +235,6 @@ export default function DashboardPage() {
               })
             )}
 
-            {/* Yeni Hatırlatıcı Ekle */}
             <Link
               href="/calendar/new"
               className="w-full mt-2 h-[76px] rounded-[16px] border-2 border-dashed border-gray-200 dark:border-[#52525B] text-gray-500 dark:text-[#CBD5E1] font-semibold text-[15px] hover:bg-gray-50 dark:hover:bg-[#3F3F46]/60 hover:border-gray-300 dark:hover:border-[#71717A] transition-colors flex items-center justify-center"
@@ -226,30 +247,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* SAĞ BÖLÜM: Takvim ve Sesli Asistan */}
         <div className="col-span-1 flex flex-col gap-6">
-
-          {/* Mini Takvim Kartı */}
           <div className="bg-white dark:bg-[#27272A] rounded-2xl p-6 shadow-sm dark:shadow-none dark:border dark:border-white/10">
             <div className="flex justify-between items-center mb-6">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-[#F8FAFC] uppercase tracking-wide">
                 {MONTHS[calMonth].toUpperCase()} {calYear}
               </h4>
               <div className="flex gap-2 text-gray-400 dark:text-[#71717A]">
-                <button
-                  onClick={prevMonth}
-                  className="hover:text-gray-800 dark:hover:text-[#F8FAFC] transition-colors p-0.5 rounded"
-                  aria-label="Önceki ay"
-                >
+                <button onClick={prevMonth} className="hover:text-gray-800 dark:hover:text-[#F8FAFC] transition-colors p-0.5 rounded" aria-label="Önceki ay">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                <button
-                  onClick={nextMonth}
-                  className="hover:text-gray-800 dark:hover:text-[#F8FAFC] transition-colors p-0.5 rounded"
-                  aria-label="Sonraki ay"
-                >
+                <button onClick={nextMonth} className="hover:text-gray-800 dark:hover:text-[#F8FAFC] transition-colors p-0.5 rounded" aria-label="Sonraki ay">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
@@ -257,73 +267,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Takvim Izgarası */}
             <div className="grid grid-cols-7 gap-y-4 text-center text-[13px]">
-              {['Pt','Sa','Ça','Pe','Cu','Ct','Pz'].map((d) => (
+              {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map((d) => (
                 <div key={d} className="text-gray-400 dark:text-[#71717A] font-medium mb-1">{d}</div>
               ))}
 
-              {/* Önceki ay günleri */}
-              <div className="text-gray-300 dark:text-[#52525B]">27</div>
-              <div className="text-gray-300 dark:text-[#52525B]">28</div>
-              <div className="text-gray-300 dark:text-[#52525B]">29</div>
-              <div className="text-gray-300 dark:text-[#52525B]">30</div>
-              <div className="text-gray-700 dark:text-[#CBD5E1] font-medium cursor-pointer hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]" onClick={() => setSelectedDay(1)}>1</div>
-              <div className="text-gray-700 dark:text-[#CBD5E1] font-medium cursor-pointer hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]" onClick={() => setSelectedDay(2)}>2</div>
-              <div className="text-gray-700 dark:text-[#CBD5E1] font-medium cursor-pointer hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]" onClick={() => setSelectedDay(3)}>3</div>
+              {calendarCells.map((cell, index) => {
+                if (!cell.isCurrentMonth) {
+                  return (
+                    <div key={index} className="text-gray-300 dark:text-[#52525B] mt-1">
+                      {cell.day}
+                    </div>
+                  );
+                }
 
-              {[4,5,6,7,8,9,10].map((d) => (
-                <div
-                  key={d}
-                  onClick={() => setSelectedDay(d)}
-                  className={`font-medium cursor-pointer transition-colors ${
-                    selectedDay === d
-                      ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white font-bold rounded-full w-[26px] h-[26px] flex items-center justify-center mx-auto shadow-md'
-                      : 'text-gray-700 dark:text-[#CBD5E1] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]'
-                  }`}
-                >
-                  {d}
-                </div>
-              ))}
+                const isSelected = selectedDay === cell.day;
 
-              {/* Seçili gün 11 (bugün) */}
-              <div
-                onClick={() => setSelectedDay(11)}
-                className={`cursor-pointer font-bold rounded-full w-[26px] h-[26px] flex items-center justify-center mx-auto shadow-md transition-colors ${
-                  selectedDay === 11
-                    ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white'
-                    : 'bg-[#0f4c3a]/80 dark:bg-[#00BBA7]/80 text-white'
-                }`}
-              >
-                11
-              </div>
-
-              {[12,13,14].map((d) => (
-                <div
-                  key={d}
-                  onClick={() => setSelectedDay(d)}
-                  className={`font-medium cursor-pointer mt-0.5 transition-colors ${
-                    selectedDay === d
-                      ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white font-bold rounded-full w-[26px] h-[26px] flex items-center justify-center mx-auto shadow-md'
-                      : 'text-gray-700 dark:text-[#CBD5E1] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]'
-                  }`}
-                >
-                  {d}
-                </div>
-              ))}
-
-              {/* Noktalı gün 15 */}
-              <div
-                onClick={() => setSelectedDay(15)}
-                className={`font-bold mt-0.5 relative cursor-pointer transition-colors ${
-                  selectedDay === 15
-                    ? 'text-[#0f4c3a] dark:text-[#00BBA7]'
-                    : 'text-gray-700 dark:text-[#CBD5E1] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7]'
-                }`}
-              >
-                15
-                <div className="w-1 h-1 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full absolute bottom-[-4px] left-1/2 -translate-x-1/2" />
-              </div>
+                return (
+                  <div key={index} onClick={() => setSelectedDay(cell.day)} className="relative flex justify-center cursor-pointer mt-0.5 group">
+                    <div className={`flex items-center justify-center w-[26px] h-[26px] transition-all ${isSelected
+                        ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white font-bold rounded-full shadow-md scale-110'
+                        : cell.isToday
+                          ? 'bg-[#0f4c3a]/80 dark:bg-[#00BBA7]/80 text-white font-bold rounded-full'
+                          : 'text-gray-700 dark:text-[#CBD5E1] group-hover:text-[#0f4c3a] dark:group-hover:text-[#00BBA7] font-medium'
+                      }`}>
+                      {cell.day}
+                    </div>
+                    {cell.hasReminder && !isSelected && (
+                      <div className="w-1 h-1 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full absolute -bottom-1.5" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -2,23 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getReminders } from '@/lib/api';
+import { getReminders, deleteReminder } from '@/lib/api';
 
 const VIEWS = ['Gün', 'Hafta', 'Ay'];
-
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export default function CalendarPage() {
-  const today = new Date();
+  const realToday = new Date(); // Gerçek güncel tarih
   const [activeView, setActiveView]   = useState('Ay');
-  const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const [calMonth, setCalMonth]       = useState(today.getMonth());
-  const [calYear, setCalYear]         = useState(today.getFullYear());
+  const [selectedDay, setSelectedDay] = useState(realToday.getDate());
+  const [calMonth, setCalMonth]       = useState(realToday.getMonth());
+  const [calYear, setCalYear]         = useState(realToday.getFullYear());
 
   // Gerçek hatırlatıcı verisi
   const [reminders, setReminders]     = useState([]);
@@ -48,6 +46,58 @@ export default function CalendarPage() {
     else setCalMonth((m) => m + 1);
   };
 
+  // --- SİLME FONKSİYONU ---
+  const handleDelete = async (reminderId) => {
+    // Yanlışlıkla tıklamalara karşı onay iste
+    const isConfirmed = window.confirm("Bu hatırlatıcıyı silmek istediğinize emin misiniz?");
+    if (!isConfirmed) return;
+
+    try {
+      await deleteReminder(reminderId);
+      // Başarılı olursa, silinen hatırlatıcıyı state'den filtreleyerek ekrandan anında kaldırıyoruz
+      setReminders((prevReminders) => prevReminders.filter((r) => (r.reminderId || r.id) !== reminderId));
+    } catch (error) {
+      console.error("Silme işlemi başarısız:", error);
+      alert("Hatırlatıcı silinirken bir hata oluştu.");
+    }
+  };
+
+  // --- DİNAMİK TAKVİM HESAPLAMASI ---
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => {
+    let day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Pazartesiden başlat
+  };
+
+  const daysInMonth = getDaysInMonth(calYear, calMonth);
+  const firstDay = getFirstDayOfMonth(calYear, calMonth);
+  const daysInPrevMonth = getDaysInMonth(calYear, calMonth - 1);
+
+  const calendarCells = [];
+
+  // 1. Önceki Ayın Günleri
+  for (let i = firstDay - 1; i >= 0; i--) {
+    calendarCells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
+  }
+
+  // 2. Mevcut Ayın Günleri (Bugün kontrolü ile)
+  for (let i = 1; i <= daysInMonth; i++) {
+    const isToday =
+      realToday.getDate() === i &&
+      realToday.getMonth() === calMonth &&
+      realToday.getFullYear() === calYear;
+
+    calendarCells.push({ day: i, isCurrentMonth: true, isToday });
+  }
+
+  // 3. Sonraki Ayın Günleri (Izgarayı 35 veya 42'ye tamamla)
+  const totalCells = calendarCells.length;
+  const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+  for (let i = 1; i <= remainingCells; i++) {
+    calendarCells.push({ day: i, isCurrentMonth: false });
+  }
+  // -----------------------------------
+
   // Seçili güne ait hatırlatıcıları filtrele
   const dayReminders = reminders.filter((r) => {
     const d = new Date(r.eventDatetime);
@@ -58,7 +108,7 @@ export default function CalendarPage() {
     );
   });
 
-  // Hangi günlerde etkinlik var? (takvim noktası için)
+  // Hangi günlerde etkinlik var? (Takvim noktası için)
   const daysWithReminders = new Set(
     reminders
       .filter((r) => {
@@ -69,7 +119,7 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="w-full max-w-[1100px] mx-auto flex gap-8">
+    <div className="w-full max-w-[1100px] mx-auto flex flex-col lg:flex-row gap-8">
 
       {/* SOL: Büyük Takvim */}
       <div className="flex-[2] bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none flex flex-col h-[calc(100vh-140px)]">
@@ -81,20 +131,12 @@ export default function CalendarPage() {
               {MONTHS[calMonth]} {calYear}
             </h2>
             <div className="flex gap-2 text-gray-500 dark:text-[#71717A]">
-              <button
-                onClick={prevMonth}
-                className="p-1 hover:bg-gray-50 dark:hover:bg-[#71717A]/20 rounded-lg transition-colors"
-                aria-label="Önceki ay"
-              >
+              <button onClick={prevMonth} className="p-1 hover:bg-gray-50 dark:hover:bg-[#71717A]/20 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <button
-                onClick={nextMonth}
-                className="p-1 hover:bg-gray-50 dark:hover:bg-[#71717A]/20 rounded-lg transition-colors"
-                aria-label="Sonraki ay"
-              >
+              <button onClick={nextMonth} className="p-1 hover:bg-gray-50 dark:hover:bg-[#71717A]/20 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                 </svg>
@@ -103,7 +145,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Görünüm Seçici */}
-          <div className="flex bg-gray-100 dark:bg-[#1A1A1A]/50 rounded-lg p-1">
+          <div className="hidden sm:flex bg-gray-100 dark:bg-[#1A1A1A]/50 rounded-lg p-1">
             {VIEWS.map((view) => (
               <button
                 key={view}
@@ -131,122 +173,53 @@ export default function CalendarPage() {
             ))}
           </div>
 
-          {/* Takvim Hücreleri */}
+          {/* Dinamik Takvim Hücreleri */}
           <div className="grid grid-cols-7 flex-1">
-            {/* 1. Hafta - önceki ay */}
-            {[25,26,27,28].map((d) => (
-              <div key={`prev-${d}`} className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-gray-300 dark:text-[#52525B] text-sm font-medium text-right`}>
-                {d}
-              </div>
-            ))}
-            {[1,2,3].map((d) => (
-              <div
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                className={`border-b ${d !== 3 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                {d}
-              </div>
-            ))}
+            {calendarCells.map((cell, index) => {
+              if (!cell.isCurrentMonth) {
+                return (
+                  <div key={index} className="border-b border-r border-gray-100 dark:border-white/10 p-2 text-gray-300 dark:text-[#52525B] text-sm font-medium text-right bg-gray-50/30 dark:bg-black/10">
+                    {cell.day}
+                  </div>
+                );
+              }
 
-            {/* 2. Hafta */}
-            {[4,5,6,7,8,9,10].map((d, i) => (
-              <div
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                <span>{d}</span>
-                {d === 4 && <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full mt-auto mb-1" />}
-              </div>
-            ))}
+              const isSelected = selectedDay === cell.day;
+              const hasEvent = daysWithReminders.has(cell.day);
 
-            {/* 3. Hafta */}
-            {[9,10].map((d, i) => (
-              <div
-                key={`w3-${d}`}
-                onClick={() => setSelectedDay(d)}
-                className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                {d}
-              </div>
-            ))}
-            {/* Seçili gün 11 */}
-            <div
-              onClick={() => setSelectedDay(11)}
-              className={`border-b border-r border-gray-100 dark:border-white/10 p-2 font-bold text-right flex flex-col items-end cursor-pointer transition-colors ${
-                selectedDay === 11
-                  ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10'
-                  : 'hover:bg-gray-50 dark:hover:bg-white/5 bg-teal-50/50 dark:bg-[#00BBA7]/10'
-              }`}
-            >
-              <span className="text-[#0f4c3a] dark:text-[#00BBA7]">11</span>
-              <div className="w-full mt-auto space-y-1 mb-1">
-                <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full" />
-                <div className="w-full h-1.5 bg-teal-600 dark:bg-[#00BBA7]/60 rounded-full opacity-80" />
-              </div>
-            </div>
-            {[12,13,14,15].map((d, i) => (
-              <div
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 3 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                {d}
-              </div>
-            ))}
+              return (
+                <div
+                  key={index}
+                  onClick={() => setSelectedDay(cell.day)}
+                  className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-sm font-medium cursor-pointer transition-colors flex flex-col items-end ${
+                    isSelected
+                      ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
+                      : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {/* BUGÜN İŞARETLEYİCİSİ: Eğer bugün ise yeşil daire rozeti içinde göster */}
+                  <span
+                    className={`flex items-center justify-center text-xs font-bold ${
+                      cell.isToday
+                        ? 'w-6 h-6 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7] text-white shadow-sm'
+                        : ''
+                    }`}
+                  >
+                    {cell.day}
+                  </span>
 
-            {/* 4. Hafta */}
-            {[16,17,18,19,20,21,22].map((d, i) => (
-              <div
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                className={`border-b ${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors flex flex-col items-end ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                <span>{d}</span>
-                {d === 17 && <div className="w-full h-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full mt-auto mb-1" />}
-              </div>
-            ))}
-
-            {/* 5. Hafta */}
-            {[23,24,25,26,27,28,29].map((d, i) => (
-              <div
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                className={`${i < 6 ? 'border-r' : ''} border-gray-100 dark:border-white/10 p-2 text-sm font-medium text-right cursor-pointer transition-colors ${
-                  selectedDay === d
-                    ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
-                    : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                {d}
-              </div>
-            ))}
+                  {/* Etkinlik (Hatırlatıcı) İndikatörü */}
+                  {hasEvent && (
+                    <div className={`w-full h-1.5 rounded-full mt-auto mb-1 ${isSelected ? 'bg-[#0f4c3a] dark:bg-[#00BBA7]' : 'bg-[#0f4c3a]/50 dark:bg-[#00BBA7]/50'}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-          {/* Seçili Günün Detayları */}
+      {/* SAĞ: Seçili Günün Detayları */}
       <div className="flex-1 flex flex-col">
         <div className="mb-6">
           <h3 className="text-xl font-bold text-[#0f4c3a] dark:text-[#00BBA7]">
@@ -266,8 +239,9 @@ export default function CalendarPage() {
           {!loadingRem && dayReminders.length === 0 && (
             <div className="bg-white dark:bg-[#27272A] rounded-xl p-8 border border-gray-100 dark:border-white/10 shadow-sm text-center">
               <p className="text-gray-400 dark:text-[#71717A] text-sm font-medium mb-4">Bu gün için etkinlik yok.</p>
+              {/* URL'ye seçili tarihi YYYY-MM-DD formatında ekliyoruz */}
               <Link
-                href="/calendar/new"
+                href={`/calendar/new?date=${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`}
                 className="inline-flex items-center px-4 py-2 bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold rounded-xl hover:bg-[#0a3629] dark:hover:bg-[#009F8E] transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,22 +253,42 @@ export default function CalendarPage() {
           )}
 
           {dayReminders.map((r) => {
-            const dt    = new Date(r.eventDatetime);
+            const dt = new Date(r.eventDatetime);
             const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             return (
               <div
                 key={r.reminderId || r.id}
-                className="bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer"
+                // group class'ını ekledik ki hover (üzerine gelme) efektini yakalayabilelim
+                className="group bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide bg-[#0f4c3a] dark:bg-[#00BBA7] text-white">
-                    {r.repeatType === 'ONCE' ? 'TEK' : r.repeatType === 'DAILY' ? 'GÜNLÜK' : 'HAFTALIK'}
+                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7]" />
+                
+                {/* SİLME BUTONU: Normalde görünmez (opacity-0), kartın üzerine gelince görünür (group-hover:opacity-100) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Kartın kendisine tıklanma olayını engeller
+                    handleDelete(r.reminderId || r.id);
+                  }}
+                  title="Hatırlatıcıyı Sil"
+                  className="absolute right-4 top-4 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-all opacity-0 group-hover:opacity-100"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+
+                <div className="flex justify-between items-start mb-3 pl-2 pr-6">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide bg-[#0f4c3a]/10 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]">
+                    {r.repeatType === 'NONE' ? 'TEK' 
+                      : r.repeatType === 'DAILY' ? 'GÜNLÜK' 
+                      : r.repeatType === 'WEEKLY' ? 'HAFTALIK' 
+                      : 'AYLIK'}
                   </span>
                   <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{timeStr}</span>
                 </div>
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2">{r.title}</h4>
+                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2 pl-2 pr-6">{r.title}</h4>
                 {r.description && (
-                  <p className="text-gray-500 dark:text-[#CBD5E1] text-[13px]">{r.description}</p>
+                  <p className="text-gray-500 dark:text-[#CBD5E1] text-[13px] pl-2 pr-6 line-clamp-2">{r.description}</p>
                 )}
               </div>
             );

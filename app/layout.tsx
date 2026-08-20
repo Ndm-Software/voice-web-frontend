@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
+import GlobalNotification from "@/components/GlobalNotification";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,13 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html 
-      lang="tr" 
-      // Sınıfların ve hydration ayarların aynen kalsın
+    <html
+      lang="tr"
       suppressHydrationWarning
     >
       <head>
-        {/* BU SCRIPT'İ EKLİYORUZ: React yüklenmeden önce çalışıp temayı kilitler */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -41,12 +40,14 @@ export default function RootLayout({
                   document.documentElement.classList.remove('dark');
                 }
               } catch (_) {}
-            `,
+            `, 
           }}
         />
       </head>
-      <body>
+      {/* İpucu: Tanımladığın fontları kullanmak için body'ye className olarak ekleyebilirsin */}
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <GlobalNotification />
       </body>
     </html>
   );

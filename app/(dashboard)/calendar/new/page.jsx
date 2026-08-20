@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createReminder, getLanguages } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createReminder, getLanguages, getUserSettings } from '@/lib/api';
 
 // Backend RepeatType enum değerleri (DAILY | WEEKLY | MONTHLY)
 const REPEAT_OPTIONS = [
@@ -30,11 +30,13 @@ const CALL_OPTIONS = [
 
 export default function NewReminderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // URL parametrelerini okumak için
+  const initialDate = searchParams.get('date') || ''; // URL'de date varsa onu al, yoksa boş bırak
 
   // Form state
   const [title, setTitle]               = useState('');
   const [description, setDescription]   = useState('');
-  const [date, setDate]                 = useState('');
+  const [date, setDate]                 = useState(initialDate); // URL'den gelen tarih varsa onu kullan
   const [time, setTime]                 = useState('');
   const [repeatType, setRepeatType]     = useState('DAILY');
   const [isRepeatOpen, setIsRepeatOpen] = useState(false);
@@ -54,20 +56,31 @@ export default function NewReminderPage() {
   const [error, setError]       = useState(null);
   const [toast, setToast]       = useState(null);
 
-  // Sayfa açılışında dilleri yükle
+  // Sayfa açılışında kullanıcının Profil Ayarlarındaki Asistan Dilini yükle
   useEffect(() => {
-    const fetchLangs = async () => {
+    const fetchUserLanguage = async () => {
       try {
-        const langs = await getLanguages();
-        setLanguages(langs);
-        if (langs.length > 0) setSelectedLangName(langs[0].name);
-      } catch {
-        setSelectedLangName('Dil bilgisi alınamadı');
+        setLoadingLangs(true);
+        const settings = await getUserSettings();
+        
+        if (settings?.language?.name) {
+          setSelectedLangName(settings.language.name);
+        } else if (settings?.languageId) {
+          const langs = await getLanguages();
+          const userLang = langs.find(l => l.languageId === settings.languageId);
+          if (userLang) setSelectedLangName(userLang.name);
+        } else {
+          setSelectedLangName('Türkçe');
+        }
+      } catch (err) {
+        console.error('Dil ayarı çekilemedi:', err);
+        setSelectedLangName('Türkçe');
       } finally {
         setLoadingLangs(false);
       }
     };
-    fetchLangs();
+
+    fetchUserLanguage();
   }, []);
 
   const showToast = (msg) => {
@@ -161,47 +174,24 @@ export default function NewReminderPage() {
           {/* 2. Satır: Asistan Dili (bilgilendirici) ve Tekrar */}
           <div className="grid grid-cols-2 gap-6">
 
-            {/* ASİSTAN DİLİ — sadece bilgilendirici, user-settings'ten geliyor */}
+            {/* ASİSTAN DİLİ — Salt Okunur (Profil Ayarlarından Yönetilir) */}
             <div>
-              <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
-                ASİSTAN DİLİ
-              </label>
-              <div className="relative">
-                <div
-                  onClick={() => { setIsLangOpen(!isLangOpen); setIsRepeatOpen(false); }}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium cursor-pointer flex justify-between items-center transition-all hover:bg-gray-100 dark:hover:bg-[#1A1A1A]/80"
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider">
+                  ASİSTAN DİLİ
+                </label>
+                <Link 
+                  href="/profile" 
+                  className="text-[11px] font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline"
                 >
-                  <span>{loadingLangs ? 'Yükleniyor...' : selectedLangName}</span>
-                  <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-300 ${isLangOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                {isLangOpen && (
-                  <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1E1E1E] border border-gray-100 dark:border-[#00BBA7]/20 rounded-xl shadow-xl overflow-hidden">
-                    {/* Bilgilendirici başlık */}
-                    <div className="px-4 py-2 text-[10px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider border-b border-gray-100 dark:border-white/5">
-                      Profil ayarlarından yönetilir
-                    </div>
-                    {languages.map((lang) => (
-                      <div
-                        key={lang.languageId}
-                        onClick={() => { setSelectedLangName(lang.name); setIsLangOpen(false); }}
-                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${
-                          selectedLangName === lang.name
-                            ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
-                            : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
-                        }`}
-                      >
-                        {lang.name} ({lang.code})
-                        {selectedLangName === lang.name && (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  Ayarlardan Değiştir →
+                </Link>
+              </div>
+              <div className="w-full px-4 py-3 bg-gray-100/80 dark:bg-[#1A1A1A]/80 border border-gray-200/60 dark:border-white/10 rounded-xl text-gray-700 dark:text-[#CBD5E1] text-sm font-medium flex justify-between items-center cursor-not-allowed">
+                <span>{loadingLangs ? 'Yükleniyor...' : selectedLangName}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-200/60 dark:bg-white/10 px-2 py-0.5 rounded-md">
+                  Profil Ayarlarından
+                </span>
               </div>
             </div>
 

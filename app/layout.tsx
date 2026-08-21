@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import GlobalNotification from "@/components/GlobalNotification";
+import { Toaster } from 'react-hot-toast';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,20 @@ export default function RootLayout({
       </head>
       {/* İpucu: Tanımladığın fontları kullanmak için body'ye className olarak ekleyebilirsin */}
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        
+        {/* TOASTER BURAYA EKLENDİ */}
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#333',
+              color: '#fff',
+              borderRadius: '10px',
+            },
+          }} 
+        />
+
         {children}
         <GlobalNotification />
       </body>

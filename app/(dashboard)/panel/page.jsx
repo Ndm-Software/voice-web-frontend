@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getUserProfile, getReminders, updateDevice } from '@/lib/api';
+// DİKKAT: getUserSettings buraya eklendi
+import { getUserProfile, getReminders, updateDevice, getUserSettings } from '@/lib/api';
 import { requestPushPermissionAndGetToken } from '@/lib/firebase';
+import { onForegroundMessage } from '@/lib/firebase';
+import toast from 'react-hot-toast';
 
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -13,15 +16,20 @@ const MONTHS = [
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  
   const [reminders, setReminders] = useState([]);
   const [loadingRem, setLoadingRem] = useState(true);
+
+  // YENİ: Sessiz Saatler için state'ler eklendi
+  const [isQuietHoursEnabled, setIsQuietHoursEnabled] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   // Gerçek zamanlı başlangıç tarihleri
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
 
-  // 1. KULLANICI VE HATIRLATICI VERİLERİNİ ÇEKME
+  // 1. KULLANICI, HATIRLATICI VE AYAR VERİLERİNİ ÇEKME
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -45,9 +53,50 @@ export default function DashboardPage() {
       }
     };
 
+    // YENİ: Ayarları çeken fonksiyon
+    const fetchSettings = async () => {
+      try {
+        const settings = await getUserSettings();
+        // Eğer backend ayar dönerse isQuietHoursEnabled değerini al, yoksa false kabul et
+        setIsQuietHoursEnabled(settings?.isQuietHoursEnabled || false);
+      } catch (err) {
+        console.error('Ayarlar yüklenemedi:', err);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
     fetchUser();
     fetchReminders();
+    fetchSettings(); // Ayarları çekme işlemini başlat
   }, []); // İlk UseEffect Bitişi
+
+  // --- ÖN PLAN BİLDİRİM DİNLEYİCİSİ ---
+  useEffect(() => {
+    const unsubscribe = onForegroundMessage((payload) => {
+      const title = payload?.notification?.title || 'Yeni Bildirim';
+      const body = payload?.notification?.body || '';
+
+      toast(
+        (t) => (
+          <div className="flex flex-col gap-1">
+            <span className="font-bold text-[15px] text-[#00BBA7]">{title}</span>
+            <span className="text-sm text-gray-200">{body}</span>
+          </div>
+        ),
+        {
+          icon: '🔔',
+          id: payload?.messageId,
+        }
+      );
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []); // Bildirim Dinleyici UseEffect Bitişi
 
   // 2. FİREBASE VE CİHAZ KAYDI
   useEffect(() => {
@@ -60,25 +109,23 @@ export default function DashboardPage() {
         console.warn("Firebase hatası:", firebaseError.message);
       }
 
-      // 2. AŞAMA: Backend'e Kayıt İşlemi
-        try {
-          if (pushToken) {
-            await updateDevice({
-              installationId: localStorage.getItem('voia_installation_id') || "Bilinmeyen-ID",
-              platform: 'WEB',
-              deviceName: window.navigator.userAgent.substring(0, 99),
-              pushToken: pushToken
-            });
-            console.log("Cihaz ve push token başarıyla kaydedildi!");
-          }
-        } catch (apiError) {
-          // 409 Hatasını sessizce yakala ve konsolu kırmızıya boyama
-          if (apiError?.status === 409) {
-            console.warn("Sistem Notu: Bu tarayıcıdaki token zaten aktif. Uygulama normal çalışmasına devam ediyor.");
-          } else {
-            console.error("Cihaz kaydedilirken hata:", apiError);
-          }
+      try {
+        if (pushToken) {
+          await updateDevice({
+            installationId: localStorage.getItem('voia_installation_id') || "Bilinmeyen-ID",
+            platform: 'WEB',
+            deviceName: window.navigator.userAgent.substring(0, 99),
+            pushToken: pushToken
+          });
+          console.log("Cihaz ve push token başarıyla kaydedildi!");
         }
+      } catch (apiError) {
+        if (apiError?.status === 409) {
+          console.warn("Sistem Notu: Bu tarayıcıdaki token zaten aktif. Uygulama normal çalışmasına devam ediyor.");
+        } else {
+          console.error("Cihaz kaydedilirken hata:", apiError);
+        }
+      }
     };
 
     initFirebaseAndRegisterDevice();
@@ -101,11 +148,10 @@ export default function DashboardPage() {
     else setCalMonth((m) => m + 1);
   };
 
-  // --- DİNAMİK TAKVİM HESAPLAMA MANTIĞI ---
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => {
     let day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1; // Haftayı Pazartesiden (0) başlat
+    return day === 0 ? 6 : day - 1;
   };
 
   const daysInMonth = getDaysInMonth(calYear, calMonth);
@@ -126,7 +172,6 @@ export default function DashboardPage() {
     });
 
     const isToday = currentDate.getFullYear() === calYear && currentDate.getMonth() === calMonth && currentDate.getDate() === i;
-
     calendarCells.push({ day: i, isCurrentMonth: true, isToday, hasReminder });
   }
 
@@ -147,8 +192,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Üst İstatistik Kartları */}
       <div className="grid grid-cols-3 gap-6 mb-10">
+        {/* AKTİF HATIRLATICILAR KARTI */}
         <Link href="/calendar" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,6 +208,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
+        {/* BUGÜNKÜ ARAMALAR KARTI (Şimdilik Statik: 4) */}
         <Link href="/history" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,6 +221,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
+        {/* SESSİZ SAAT DURUMU KARTI (DİNAMİK HALE GETİRİLDİ) */}
         <Link href="/quiet-hours" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-[#71717A]/20 flex items-center justify-center text-gray-400 dark:text-[#CBD5E1] mr-4 border border-gray-100 dark:border-[#52525B]">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +230,9 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-1">SESSİZ SAAT DURUMU</p>
-            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">Kapalı</p>
+            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">
+              {loadingSettings ? '...' : (isQuietHoursEnabled ? 'Açık' : 'Kapalı')}
+            </p>
           </div>
         </Link>
       </div>

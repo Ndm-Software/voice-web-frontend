@@ -182,13 +182,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    // --- KULLANICI DOSTU FRONTEND DOĞRULAMALARI (BURAYI EKLEDİK) ---
+    // --- KULLANICI DOSTU FRONTEND DOĞRULAMALARI ---
     if (!email) {
       setError("Lütfen e-posta adresinizi girin.");
-      return; // Hata varsa kodu burada durdur, backend'e gitme
+      return;
     }
 
-    // E-posta format kontrolü (içinde @ ve . var mı?)
+    // E-posta format kontrolü
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError("Lütfen geçerli bir e-posta adresi formatı (örneğin: isim@mail.com) girin.");
@@ -210,21 +210,36 @@ export default function LoginPage() {
     try {
       await login(email, password);
       // Token backend tarafından HttpOnly cookie olarak yazılır.
-      // Frontend token'ı görmez veya saklamaz; tarayıcı sonraki isteklerde
-      // cookie'yi otomatik gönderir (credentials: 'include' sayesinde).
       router.push('/panel');
     } catch (err) {
-      // Backend'den gelen orijinal hata metni
-      let backendError = err.message;
+      // Backend'den gelen orijinal hata metni veya hata kodu
+      let backendError = err.message || '';
+      let errorCode = err.code || err.status;
 
-      // Sık karşılaşılan İngilizce hataları Türkçeye çeviriyoruz
+      // 1. TELEFON / HESAP DOĞRULAMA ENGELİ KONTROLÜ
+      if (
+        errorCode === 403 ||
+        errorCode === 'PHONE_VERIFICATION_REQUIRED' ||
+        backendError.includes('PHONE_VERIFICATION_REQUIRED') ||
+        backendError.toLowerCase().includes('doğrulama') ||
+        backendError.toLowerCase().includes('verification')
+      ) {
+        setError('Hesabınız henüz doğrulanmamış. Doğrulama sayfasına yönlendiriliyorsunuz...');
+
+        setTimeout(() => {
+          router.push(`/verify`); // Parametre yok, kullanıcı açılan sayfada numarasını kendi yazacak.
+        }, 1200);
+        return;
+      }
+
+      // 2. SIK KARŞILAŞILAN İNGİLİZCE HATALARIN TÜRKÇELEŞTİRİLMESİ
       if (backendError === 'Invalid email or password.' || backendError === 'Unauthorized') {
         setError('E-posta adresi veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.');
       } else if (backendError.includes('not found')) {
         setError('Bu e-posta adresiyle kayıtlı bir kullanıcı bulunamadı.');
       } else {
         // Bilinmeyen başka bir hata gelirse varsayılan Türkçe mesajı göster
-        setError('Giriş yapılamadı. Lütfen bağlantınızı ve bilgilerinizi kontrol edin.');
+        setError(backendError || 'Giriş yapılamadı. Lütfen bağlantınızı ve bilgilerinizi kontrol edin.');
       }
 
     } finally {
@@ -348,7 +363,7 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            
+
             {/* Hata Mesajı */}
             {error && (
               <div className="flex items-start gap-3 p-4 mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 animate-[fadeIn_0.3s_ease-out]">

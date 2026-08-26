@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-// DİKKAT: getUserSettings buraya eklendi
-import { getUserProfile, getReminders, updateDevice, getUserSettings } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { getUserProfile, getReminders, updateDevice, deleteReminder } from '@/lib/api'; // deleteReminder eklendi
 import { requestPushPermissionAndGetToken } from '@/lib/firebase';
 import { onForegroundMessage } from '@/lib/firebase';
 import toast from 'react-hot-toast';
@@ -16,20 +16,21 @@ const MONTHS = [
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  
+
   const [reminders, setReminders] = useState([]);
   const [loadingRem, setLoadingRem] = useState(true);
 
-  // YENİ: Sessiz Saatler için state'ler eklendi
-  const [isQuietHoursEnabled, setIsQuietHoursEnabled] = useState(false);
-  const [loadingSettings, setLoadingSettings] = useState(true);
+  // Sessiz Saatler için yeni durum state'i
+  const [quietHoursStatus, setQuietHoursStatus] = useState("Hesaplanıyor...");
 
   // Gerçek zamanlı başlangıç tarihleri
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
 
-  // 1. KULLANICI, HATIRLATICI VE AYAR VERİLERİNİ ÇEKME
+  const router = useRouter();
+
+  // 1. KULLANICI VE HATIRLATICI VERİLERİNİ ÇEKME
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -53,25 +54,59 @@ export default function DashboardPage() {
       }
     };
 
-    // YENİ: Ayarları çeken fonksiyon
-    const fetchSettings = async () => {
-      try {
-        const settings = await getUserSettings();
-        // Eğer backend ayar dönerse isQuietHoursEnabled değerini al, yoksa false kabul et
-        setIsQuietHoursEnabled(settings?.isQuietHoursEnabled || false);
-      } catch (err) {
-        console.error('Ayarlar yüklenemedi:', err);
-      } finally {
-        setLoadingSettings(false);
-      }
-    };
-
     fetchUser();
     fetchReminders();
-    fetchSettings(); // Ayarları çekme işlemini başlat
-  }, []); // İlk UseEffect Bitişi
+    // fetchSettings() BURADAN KALDIRILDI!
+  }, []);
 
-  // --- ÖN PLAN BİLDİRİM DİNLEYİCİSİ ---
+  // 2. AKILLI SESSİZ SAATLER HESAPLAYICISI (LOCALSTORAGE)
+  useEffect(() => {
+    const calculateQuietHours = () => {
+      const savedSettings = localStorage.getItem('voia_quiet_hours');
+      if (!savedSettings) {
+        setQuietHoursStatus("Kapalı"); // Ayar yapılmamışsa varsayılan olarak kapalı
+        return;
+      }
+
+      const daysConfig = JSON.parse(savedSettings);
+      const now = new Date();
+
+      // JavaScript'te pazar=0, pzt=1'dir. Bizim days dizimizde pzt=0, pazar=6
+      const jsDayToConfigIndex = [6, 0, 1, 2, 3, 4, 5];
+      const todayConfig = daysConfig[jsDayToConfigIndex[now.getDay()]];
+
+      if (!todayConfig.enabled) {
+        setQuietHoursStatus("Kapalı");
+        return;
+      }
+
+      // Saatleri dakikaya çevirip karşılaştırma yapıyoruz
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [startH, startM] = todayConfig.startTime.split(':').map(Number);
+      const [endH, endM] = todayConfig.endTime.split(':').map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+
+      let isActive = false;
+      if (startMinutes > endMinutes) {
+        // Gece yarısını geçiyor (Örn: 22:00'den ertesi sabah 07:00'ye)
+        isActive = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+      } else {
+        // Aynı gün içinde (Örn: 10:00'dan 15:00'e)
+        isActive = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+      }
+
+      setQuietHoursStatus(isActive ? "Açık" : "Kapalı");
+    };
+
+    calculateQuietHours();
+
+    // Her 1 dakikada bir saati kontrol edip durumu güncellesin
+    const interval = setInterval(calculateQuietHours, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 3. ÖN PLAN BİLDİRİM DİNLEYİCİSİ
   useEffect(() => {
     const unsubscribe = onForegroundMessage((payload) => {
       const title = payload?.notification?.title || 'Yeni Bildirim';
@@ -96,12 +131,12 @@ export default function DashboardPage() {
         unsubscribe();
       }
     };
-  }, []); // Bildirim Dinleyici UseEffect Bitişi
+  }, []);
 
-  // 2. FİREBASE VE CİHAZ KAYDI
+  // 4. FİREBASE VE CİHAZ KAYDI
   useEffect(() => {
     const initFirebaseAndRegisterDevice = async () => {
-      let pushToken = null; 
+      let pushToken = null;
 
       try {
         pushToken = await requestPushPermissionAndGetToken();
@@ -117,7 +152,6 @@ export default function DashboardPage() {
             deviceName: window.navigator.userAgent.substring(0, 99),
             pushToken: pushToken
           });
-          console.log("Cihaz ve push token başarıyla kaydedildi!");
         }
       } catch (apiError) {
         if (apiError?.status === 409) {
@@ -129,7 +163,23 @@ export default function DashboardPage() {
     };
 
     initFirebaseAndRegisterDevice();
-  }, []); // İkinci UseEffect Bitişi
+  }, []);
+
+  // Panel sayfası için silme fonksiyon
+  const handleDelete = async (e, reminderId) => {
+    e.stopPropagation();
+    const isConfirmed = window.confirm("Bu hatırlatıcıyı silmek istediğinize emin misiniz?");
+    if (!isConfirmed) return;
+
+    try {
+      await deleteReminder(reminderId);
+      setReminders((prev) => prev.filter((r) => (r.reminderId || r.id) !== reminderId));
+      toast.success("Hatırlatıcı başarıyla silindi");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hatırlatıcı silinirken bir hata oluştu");
+    }
+  };
 
   // Bugüne ait hatırlatıcılar
   const today = new Date();
@@ -164,7 +214,7 @@ export default function DashboardPage() {
     calendarCells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
   }
 
-  const currentDate = new Date(); 
+  const currentDate = new Date();
   for (let i = 1; i <= daysInMonth; i++) {
     const hasReminder = reminders.some(r => {
       const d = new Date(r.eventDatetime);
@@ -193,7 +243,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-6 mb-10">
-        {/* AKTİF HATIRLATICILAR KARTI */}
         <Link href="/calendar" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,7 +257,6 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* BUGÜNKÜ ARAMALAR KARTI (Şimdilik Statik: 4) */}
         <Link href="/history" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,17 +269,16 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* SESSİZ SAAT DURUMU KARTI (DİNAMİK HALE GETİRİLDİ) */}
         <Link href="/quiet-hours" className="bg-white dark:bg-[#27272A] rounded-2xl p-6 flex items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none dark:border dark:border-white/10 hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer">
-          <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-[#71717A]/20 flex items-center justify-center text-gray-400 dark:text-[#CBD5E1] mr-4 border border-gray-100 dark:border-[#52525B]">
+          <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] mr-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
           </div>
           <div>
             <p className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-1">SESSİZ SAAT DURUMU</p>
-            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">
-              {loadingSettings ? '...' : (isQuietHoursEnabled ? 'Açık' : 'Kapalı')}
+            <p className={`text-[22px] font-extrabold leading-none ${quietHoursStatus === 'Açık' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'text-gray-800 dark:text-[#F8FAFC]'}`}>
+              {quietHoursStatus}
             </p>
           </div>
         </Link>
@@ -241,7 +288,7 @@ export default function DashboardPage() {
         <div className="col-span-2">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-base font-bold text-gray-800 dark:text-[#F8FAFC]">Yaklaşan Hatırlatıcılar</h3>
-            <Link href="/history" className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline flex items-center">
+            <Link href="/calendar" className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline flex items-center">
               Tümünü Gör
               <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -266,20 +313,48 @@ export default function DashboardPage() {
                   ? `Bugün, ${dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
                   : `${dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}, ${dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
                 const repeatLabel = r.repeatType === 'DAILY' ? 'Tekrarlıyor' : r.repeatType === 'WEEKLY' ? 'Haftalık' : '';
+
                 return (
-                  <Link
+                  <div
                     key={r.reminderId || r.id}
-                    href="/calendar"
-                    className="bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
+                    onClick={() => router.push('/calendar')} // Karta tıklanınca takvime gider
+                    className="group bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
                   >
                     <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
-                    <div className="pl-12">
-                      <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] truncate max-w-[280px]">{r.title}</h4>
+                    <div className="pl-12 flex-1">
+                      <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] truncate max-w-[200px] sm:max-w-[280px]">
+                        {r.title}
+                      </h4>
                       <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">
                         {dateLabel}{repeatLabel ? ` • ${repeatLabel}` : ''}
                       </p>
                     </div>
-                  </Link>
+
+                    {/* AKSİYON BUTONLARI (Sadece üzerine gelince görünür) */}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-[#27272A] pl-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/calendar/${r.reminderId || r.id}`);
+                        }}
+                        className="p-2 text-gray-400 hover:text-[#0f4c3a] hover:bg-teal-50 dark:hover:bg-[#00BBA7]/10 dark:hover:text-[#00BBA7] rounded-md transition-colors"
+                        title="Düzenle"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, r.reminderId || r.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
+                        title="Sil"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 );
               })
             )}
@@ -335,10 +410,10 @@ export default function DashboardPage() {
                 return (
                   <div key={index} onClick={() => setSelectedDay(cell.day)} className="relative flex justify-center cursor-pointer mt-0.5 group">
                     <div className={`flex items-center justify-center w-[26px] h-[26px] transition-all ${isSelected
-                        ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white font-bold rounded-full shadow-md scale-110'
-                        : cell.isToday
-                          ? 'bg-[#0f4c3a]/80 dark:bg-[#00BBA7]/80 text-white font-bold rounded-full'
-                          : 'text-gray-700 dark:text-[#CBD5E1] group-hover:text-[#0f4c3a] dark:group-hover:text-[#00BBA7] font-medium'
+                      ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white font-bold rounded-full shadow-md scale-110'
+                      : cell.isToday
+                        ? 'bg-[#0f4c3a]/80 dark:bg-[#00BBA7]/80 text-white font-bold rounded-full'
+                        : 'text-gray-700 dark:text-[#CBD5E1] group-hover:text-[#0f4c3a] dark:group-hover:text-[#00BBA7] font-medium'
                       }`}>
                       {cell.day}
                     </div>

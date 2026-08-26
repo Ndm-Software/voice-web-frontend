@@ -279,11 +279,13 @@ export default function RegisterPage() {
         throw new Error(errorMsg || 'Kayıt başarısız.');
       }
 
-      // Kayıt başarılıysa kullanıcıyı giriş sayfasına yönlendir
-      showToast('Kayıt başarılı! Giriş yapabilirsiniz.');
+      // Kayıt başarılıysa kullanıcıyı DOĞRULAMA sayfasına yönlendir
+      showToast('Kayıt başarılı! Doğrulama kodunuz gönderildi.');
       setTimeout(() => {
-        router.push('/login');
-      }, 1500);
+        // Email parametresini URL'ye güvenli bir şekilde ekliyoruz
+        // Register formunda başarılı kayıt sonrası
+        router.push(`/verify?phone=${encodeURIComponent(cleanPhoneNumber)}`);
+      }, 1200);
 
     } catch (err) {
       // BACKEND'DEN GELEN GERÇEK HATAYI KONSOLA YAZDIRIYORUZ
@@ -481,10 +483,10 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`w-full bg-gray-50 dark:bg-[#1E1E1E] border px-4 py-2.5 rounded-xl text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 transition-colors ${isPasswordMismatch
-                      ? 'border-red-300 focus:ring-red-200'
-                      : isPasswordMatch
-                        ? 'border-teal-300 dark:border-[#34D399] focus:ring-teal-200 dark:focus:ring-[#34D399]/20'
-                        : 'border-gray-200 dark:border-white/10 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20'
+                    ? 'border-red-300 focus:ring-red-200'
+                    : isPasswordMatch
+                      ? 'border-teal-300 dark:border-[#34D399] focus:ring-teal-200 dark:focus:ring-[#34D399]/20'
+                      : 'border-gray-200 dark:border-white/10 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20'
                     }`}
                 />
                 <button

@@ -105,18 +105,14 @@ export default function ProfilePage() {
         // 3. KULLANICININ AYARLARINI ÇEK
         const settings = await getUserSettings();
         
-        // Hatanın gerçek sebebini görmek için konsola yazdırıyoruz
         console.log("Backend'den gelen ayarlar:", settings); 
 
         if (settings) {
           setUserSettings(settings);
           
-          // Backend'den gelen seçili dili güvenli bir şekilde bul (Obje içinde nested gelebilir)
           const savedLangId = settings.languageId || settings.language?.languageId || settings.language?.id;
 
           setPreferences({
-            // Eğer veritabanında kullanıcının kaydettiği bir dil varsa KESİNLİKLE ONU KULLAN
-            // Hiç ayar yoksa (ilk kez giriyorsa) listedeki ilk dili varsayılan yap
             languageId: savedLangId || (langs.length > 0 ? langs[0].languageId : ''),
             defaultPushBefore: settings.defaultPushBefore || 30,
             defaultCallBefore: settings.defaultCallBefore || 0
@@ -128,7 +124,6 @@ export default function ProfilePage() {
             callTime: settings.defaultCallBefore === 0 ? 'Aninda' : `${settings.defaultCallBefore}dk`
           }));
         } else {
-          // Eğer kullanıcının henüz hiçbir ayar kaydı yoksa
           if (langs.length > 0) {
             setPreferences(prev => ({ ...prev, languageId: langs[0].languageId }));
           }
@@ -211,16 +206,13 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      // 1. Önce Firebase token'ını sil (Böylece yeni giren kişi taze token alacak)
       await removePushToken();
-      
-      // 2. Backend'e çıkış isteği at
       await logout(); 
     } catch (error) {
       console.error("Çıkış yapılırken hata oluştu:", error);
     } finally {
       clearAuthStorage();
-      localStorage.removeItem('voia_active_installation_id'); // Standart temizlik
+      localStorage.removeItem('voia_active_installation_id');
       router.push('/');
     }
   };
@@ -450,6 +442,31 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* --- YENİ EKLENEN KISIM: SESSİZ SAATLER'E YÖNLENDİRME KARTI --- */}
+        <Link 
+          href="/quiet-hours" 
+          className="block bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-md hover:border-teal-100 dark:hover:border-[#00BBA7]/30 transition-all group focus:outline-none"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-[#00BBA7]/10 flex items-center justify-center text-[#0f4c3a] dark:text-[#00BBA7] group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">Sessiz Saatler</h3>
+                <p className="text-sm text-gray-500 dark:text-[#CBD5E1]">Asistanın sizi rahatsız etmeyeceği dinlenme zamanlarını ayarlayın.</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:text-[#0f4c3a] dark:group-hover:text-[#00BBA7] group-hover:bg-teal-50 dark:group-hover:bg-[#00BBA7]/10 transition-all">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </Link>
 
         {/* TERCİHLER KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">

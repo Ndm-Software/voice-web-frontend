@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createReminder, getLanguages, getUserSettings } from '@/lib/api';
+import { useRouter, useParams } from 'next/navigation';
+import { updateReminder, getReminderById, getLanguages, getUserSettings } from '@/lib/api';
 
-// Backend RepeatType enum değerleri (NONE | DAILY | WEEKLY | MONTHLY)
 const REPEAT_OPTIONS = [
   { label: 'Tekrarlanmasın', value: 'NONE'    },
   { label: 'Her Gün',        value: 'DAILY'   },
@@ -13,7 +12,6 @@ const REPEAT_OPTIONS = [
   { label: 'Her Ay',         value: 'MONTHLY' },
 ];
 
-// Bildirim zamanlama → dakika dönüşümü
 const PUSH_OPTIONS = [
   { label: 'Zamanında', minutes: 0  },
   { label: '5 dk',      minutes: 5  },
@@ -21,7 +19,6 @@ const PUSH_OPTIONS = [
   { label: '30 dk',     minutes: 30 },
 ];
 
-// Sesli arama zamanlama → dakika dönüşümü (undefined = arama yok)
 const CALL_OPTIONS = [
   { label: 'Yok',       minutes: undefined },
   { label: 'Zamanında', minutes: 0         },
@@ -29,41 +26,40 @@ const CALL_OPTIONS = [
   { label: '10 dk',     minutes: 10        },
 ];
 
-export default function NewReminderPage() {
+export default function EditReminderPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // URL parametrelerini okumak için
-  const initialDate = searchParams.get('date') || ''; // URL'de date varsa onu al, yoksa boş bırak
+  const params = useParams(); // URL'den ID'yi alıyoruz (/calendar/[id])
+  const reminderId = params?.id;
 
   // Form state
   const [title, setTitle]               = useState('');
   const [description, setDescription]   = useState('');
-  const [date, setDate]                 = useState(initialDate); // URL'den gelen tarih varsa onu kullan
+  const [date, setDate]                 = useState(''); 
   const [time, setTime]                 = useState('');
-  const [repeatType, setRepeatType]     = useState('NONE'); // Varsayılan olarak tekrarsız seçili
+  const [repeatType, setRepeatType]     = useState('NONE');
   const [isRepeatOpen, setIsRepeatOpen] = useState(false);
-  const [pushMinutes, setPushMinutes]   = useState(0);       // dakika cinsinden
-  const [callMinutes, setCallMinutes]   = useState(undefined); // undefined = arama yok
+  
+  const [pushMinutes, setPushMinutes]   = useState(0);       
+  const [callMinutes, setCallMinutes]   = useState(undefined); 
 
-  // Dil listesi (backend'den)
-  const [languages, setLanguages]       = useState([]);
+  // Dil listesi
   const [loadingLangs, setLoadingLangs] = useState(true);
-  const [isLangOpen, setIsLangOpen]     = useState(false);
-  // Dil seçimi sadece bilgilendirici — backend reminder'da languageId yok,
-  // user-settings'ten alınır. Dropdown readonly info olarak gösteriliyor.
   const [selectedLangName, setSelectedLangName] = useState('Yükleniyor...');
 
   // UI state
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
-  const [toast, setToast]       = useState(null);
+  const [isFetching, setIsFetching] = useState(true); // İlk veri yükleme
+  const [isSaving, setIsSaving]     = useState(false);
+  const [error, setError]           = useState(null);
+  const [toast, setToast]           = useState(null);
 
-  // Sayfa açılışında kullanıcının Profil Ayarlarındaki Asistan Dilini yükle
+  // 1. Sayfa açılışında Dili ve Mevcut Hatırlatıcıyı Çek
   useEffect(() => {
-    const fetchUserLanguage = async () => {
+    const fetchInitialData = async () => {
       try {
-        setLoadingLangs(true);
-        const settings = await getUserSettings();
+        setIsFetching(true);
         
+        // A. Kullanıcı Dilini Çek
+        const settings = await getUserSettings();
         if (settings?.language?.name) {
           setSelectedLangName(settings.language.name);
         } else if (settings?.languageId) {
@@ -73,28 +69,54 @@ export default function NewReminderPage() {
         } else {
           setSelectedLangName('Türkçe');
         }
-      } catch (err) {
-        console.error('Dil ayarı çekilemedi:', err);
-        setSelectedLangName('Türkçe');
-      } finally {
         setLoadingLangs(false);
+
+        // B. Mevcut Hatırlatıcıyı Çek
+        if (reminderId) {
+          const reminder = await getReminderById(reminderId);
+          
+          setTitle(reminder.title || '');
+          setDescription(reminder.description || '');
+          setRepeatType(reminder.repeatType || 'NONE');
+
+          // Backend'den gelen ISO tarihi Date objesine çevirip inputlara uygun parçalıyoruz
+          if (reminder.eventDatetime) {
+            const dt = new Date(reminder.eventDatetime);
+            const localDate = dt.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+            const localTime = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            setDate(localDate);
+            setTime(localTime);
+          }
+
+          if (reminder.pushNotifications?.length > 0) {
+            setPushMinutes(reminder.pushNotifications[0].minutesBefore);
+          }
+          if (reminder.voiceCallSettings?.length > 0) {
+            setCallMinutes(reminder.voiceCallSettings[0].minutesBefore);
+          }
+        }
+      } catch (err) {
+        console.error('Veriler çekilemedi:', err);
+        setError('Hatırlatıcı bilgileri yüklenemedi. Belki silinmiş olabilir.');
+      } finally {
+        setIsFetching(false);
       }
     };
 
-    fetchUserLanguage();
-  }, []);
+    fetchInitialData();
+  }, [reminderId]);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const selectedRepeatLabel = REPEAT_OPTIONS.find(r => r.value === repeatType)?.label ?? 'Yok';
+  const selectedRepeatLabel = REPEAT_OPTIONS.find(r => r.value === repeatType)?.label ?? 'Tekrarlanmasın';
 
+  // 2. Güncellemeleri Kaydet (Hataya sebep olan isUrgent temizlendi)
   const handleSave = async () => {
     setError(null);
 
-    // Basit validasyon
     if (!title.trim()) {
       setError('Lütfen bir başlık girin.');
       return;
@@ -104,7 +126,6 @@ export default function NewReminderPage() {
       return;
     }
 
-    // Tarih + saati ISO 8601'e çevir
     const eventDatetime = new Date(`${date}T${time}:00`).toISOString();
     if (isNaN(new Date(eventDatetime).getTime())) {
       setError('Geçersiz tarih veya saat formatı.');
@@ -112,30 +133,37 @@ export default function NewReminderPage() {
     }
 
     const payload = {
-      title:          title.trim(),
+      title: title.trim(),
+      description: description.trim(),
       eventDatetime,
       repeatType,
-      isUrgent:       false // Backend beklentisi
     };
 
-    if (description.trim()) payload.description       = description.trim();
-    if (pushMinutes !== undefined) payload.pushMinutesBefore  = pushMinutes;
-    if (callMinutes !== undefined) payload.voiceMinutesBefore = callMinutes;
-
-    setLoading(true);
+    setIsSaving(true);
     try {
-      await createReminder(payload);
-      router.push('/calendar');
+      await updateReminder(reminderId, payload);
+      
+      showToast('Hatırlatıcı başarıyla güncellendi!');
+      setTimeout(() => {
+        router.push('/calendar');
+      }, 1000);
     } catch (err) {
-      console.error('Hatırlatıcı kaydedilemedi:', err);
-      setError(err.message || 'Hatırlatıcı kaydedilemedi. Lütfen tekrar deneyin.');
-    } finally {
-      setLoading(false);
+      console.error('Hatırlatıcı güncellenemedi:', err);
+      setError(err.message || 'Hatırlatıcı güncellenemedi. Lütfen tekrar deneyin.');
+      setIsSaving(false);
     }
   };
 
+  if (isFetching) {
+    return (
+      <div className="w-full max-w-4xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <div className="text-gray-500 font-medium">Hatırlatıcı bilgileri yükleniyor...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto pb-10">
 
       {/* Toast */}
       {toast && (
@@ -147,9 +175,25 @@ export default function NewReminderPage() {
         </div>
       )}
 
-      {/* Sayfa İçeriği: Ana Kart */}
-      <div className="bg-white dark:bg-[#27272A] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-white/10 transition-colors duration-300">
+      {/* Üst Geri Dönüş Linki */}
+      <Link href="/calendar" className="inline-flex items-center text-sm font-bold text-gray-500 dark:text-[#71717A] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors mb-6 group">
+        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mr-3 group-hover:bg-[#0f4c3a] dark:group-hover:bg-[#00BBA7] group-hover:text-white transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </div>
+        Takvime Dön
+      </Link>
 
+      <div className="mb-8">
+        <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">Hatırlatıcıyı Düzenle</h2>
+        <p className="text-gray-500 dark:text-[#CBD5E1] text-[15px]">
+          Mevcut etkinlik detaylarınızı ve asistan tercihlerinizi güncelleyin.
+        </p>
+      </div>
+
+      {/* Ana Form Kartı */}
+      <div className="bg-white dark:bg-[#27272A] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-white/10 transition-colors duration-300">
         <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
 
           {/* Hata mesajı */}
@@ -159,7 +203,7 @@ export default function NewReminderPage() {
             </div>
           )}
 
-          {/* 1. Satır: Başlık */}
+          {/* Başlık */}
           <div>
             <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
               BAŞLIK *
@@ -169,46 +213,40 @@ export default function NewReminderPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Toplantı hazırlığı..."
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/25 transition-colors"
             />
           </div>
 
-          {/* 2. Satır: Asistan Dili (bilgilendirici) ve Tekrar */}
+          {/* Asistan Dili ve Tekrar */}
           <div className="grid grid-cols-2 gap-6">
-
-            {/* ASİSTAN DİLİ — Salt Okunur (Profil Ayarlarından Yönetilir) */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider">
                   ASİSTAN DİLİ
                 </label>
-                <Link 
-                  href="/profile" 
-                  className="text-[11px] font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline"
-                >
+                <Link href="/profile" className="text-[11px] font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline">
                   Ayarlardan Değiştir →
                 </Link>
               </div>
               <div className="w-full px-4 py-3 bg-gray-100/80 dark:bg-[#1A1A1A]/80 border border-gray-200/60 dark:border-white/10 rounded-xl text-gray-700 dark:text-[#CBD5E1] text-sm font-medium flex justify-between items-center cursor-not-allowed">
                 <span>{loadingLangs ? 'Yükleniyor...' : selectedLangName}</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-200/60 dark:bg-white/10 px-2 py-0.5 rounded-md">
-                  Profil Ayarlarından
+                  Profil
                 </span>
               </div>
             </div>
 
-            {/* TEKRAR */}
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 TEKRAR
               </label>
               <div className="relative">
                 <div
-                  onClick={() => { setIsRepeatOpen(!isRepeatOpen); setIsLangOpen(false); }}
+                  onClick={() => setIsRepeatOpen(!isRepeatOpen)}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium cursor-pointer flex justify-between items-center transition-all hover:bg-gray-100 dark:hover:bg-[#1A1A1A]/80"
                 >
                   <span>{selectedRepeatLabel}</span>
-                  <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-300 ${isRepeatOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isRepeatOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -226,9 +264,7 @@ export default function NewReminderPage() {
                       >
                         {opt.label}
                         {repeatType === opt.value && (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                         )}
                       </div>
                     ))}
@@ -238,37 +274,33 @@ export default function NewReminderPage() {
             </div>
           </div>
 
-          {/* 3. Satır: Tarih ve Saat */}
+          {/* Tarih ve Saat */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 TARİH *
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
-                />
-              </div>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/25 transition-colors"
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 SAAT *
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
-                />
-              </div>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/25 transition-colors"
+              />
             </div>
           </div>
 
-          {/* 4. Satır: Açıklama */}
+          {/* Açıklama */}
           <div>
             <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
               AÇIKLAMA
@@ -278,52 +310,27 @@ export default function NewReminderPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Hatırlatıcı detaylarını buraya ekleyin..."
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 placeholder-gray-400 dark:placeholder-gray-500 resize-none transition-colors"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/25 resize-none transition-colors"
             />
           </div>
 
-          {/* 5. Satır: Zamanlama Butonları */}
+          {/* Bildirim ve Sesli Arama Ayarları (Salt Okunur) */}
           <div className="grid grid-cols-2 gap-6 pt-2">
-            {/* Bildirim Zamanlaması */}
-            <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Bildirim Zamanlaması
-              </label>
+            <div className="opacity-60 pointer-events-none">
+              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">Bildirim (Mevcut Ayar)</label>
               <div className="flex gap-2">
                 {PUSH_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => setPushMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      pushMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
-                  >
+                  <button key={opt.label} type="button" className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${pushMinutes === opt.minutes ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]' : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1]'}`}>
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Sesli Arama Zamanlaması */}
-            <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Sesli Arama Zamanlaması
-              </label>
+            <div className="opacity-60 pointer-events-none">
+              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">Sesli Arama (Mevcut Ayar)</label>
               <div className="flex gap-2">
                 {CALL_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => setCallMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      callMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
-                  >
+                  <button key={opt.label} type="button" className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${callMinutes === opt.minutes ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]' : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1]'}`}>
                     {opt.label}
                   </button>
                 ))}
@@ -333,24 +340,15 @@ export default function NewReminderPage() {
 
           {/* Alt Butonlar */}
           <div className="flex items-center justify-end gap-6 pt-6">
-            <Link
-              href="/calendar"
-              className="text-sm font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:text-[#0a3629] dark:hover:text-[#009F8E] transition-colors"
-            >
+            <Link href="/calendar" className="text-sm font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline">
               İptal Et
             </Link>
             <button
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-8 py-3.5 bg-[#0f4c3a] dark:bg-[#00BBA7] hover:bg-[#0a3629] dark:hover:bg-[#009F8E] text-white text-sm font-bold rounded-xl transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSaving}
+              className="flex items-center gap-2 px-8 py-3.5 bg-[#0f4c3a] dark:bg-[#00BBA7] hover:bg-[#0a3629] dark:hover:bg-[#009F8E] text-white text-sm font-bold rounded-xl transition-colors shadow-sm disabled:opacity-60"
             >
-              {loading && (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              )}
-              {loading ? 'Kaydediliyor...' : 'Hatırlatıcıyı Kaydet'}
+              {isSaving ? 'Güncelleniyor...' : 'Değişiklikleri Kaydet'}
             </button>
           </div>
 

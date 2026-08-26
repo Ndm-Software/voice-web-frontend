@@ -1,37 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-
-const ALL_ITEMS = [
-  {
-    id: 1, group: 'BUGÜN', type: 'missed-call', name: 'Annem',
-    sub: 'Cevapsız Sesli Arama', time: '14:32',
-    badge: 'Cevapsız', badgeClass: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
-    iconBg: 'bg-red-50 dark:bg-red-900/20', iconColor: 'text-red-500 dark:text-red-400',
-    icon: 'missed',
-  },
-  {
-    id: 2, group: 'BUGÜN', type: 'call', name: 'Ahmet Yılmaz',
-    sub: 'Gelen Sesli Arama (12 dk)', time: '09:45',
-    badge: 'İletildi', badgeClass: 'bg-teal-50 dark:bg-[#34D399]/10 text-[#0f4c3a] dark:text-[#34D399]',
-    iconBg: 'bg-teal-50 dark:bg-[#00BBA7]/10', iconColor: 'text-[#0f4c3a] dark:text-[#00BBA7]',
-    icon: 'phone',
-  },
-  {
-    id: 3, group: 'DÜN', type: 'notification', name: 'İlaç Hatırlatıcısı',
-    sub: 'Akşam dozunu almayı unutmayın', time: '20:00',
-    badge: 'İletildi', badgeClass: 'bg-teal-50 dark:bg-[#34D399]/10 text-[#0f4c3a] dark:text-[#34D399]',
-    iconBg: 'bg-teal-50 dark:bg-[#00BBA7]/10', iconColor: 'text-[#0f4c3a] dark:text-[#00BBA7]',
-    icon: 'task',
-  },
-  {
-    id: 4, group: 'DÜN', type: 'missed-call', name: 'Bilinmeyen Numara',
-    sub: 'Cevapsız Sesli Arama', time: '17:42',
-    badge: 'Cevapsız', badgeClass: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
-    iconBg: 'bg-red-50 dark:bg-red-900/20', iconColor: 'text-red-500 dark:text-red-400',
-    icon: 'missed', redBorder: true,
-  },
-];
+import React, { useState, useEffect } from 'react';
+import { getReminderHistory, deleteReminderHistory } from '@/lib/api';
 
 const ICON_MAP = {
   missed: (
@@ -64,13 +34,97 @@ const FILTERS = [
 ];
 
 export default function HistoryPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const showToast = (message) => {
+    setToast({ message });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchHistory = async () => {
+    setLoading(true);
+    try {
+      const backendLogs = await getReminderHistory();
+      
+      // Backend verilerini UI'ın beklediği objelere (Mapping) çevirme
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // Verileri tarihe göre yeniden eskiye doğru sıralıyoruz
+      const sortedLogs = (backendLogs || []).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+
+      const formattedItems = sortedLogs.map(log => {
+        const dateObj = new Date(log.sentAt);
+        const isToday = dateObj.toDateString() === today.toDateString();
+        const isYesterday = dateObj.toDateString() === yesterday.toDateString();
+        
+        let group = '';
+        if (isToday) group = 'BUGÜN';
+        else if (isYesterday) group = 'DÜN';
+        else group = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toUpperCase();
+
+        const isPush = log.historyType === 'PUSH';
+        const isSuccess = log.status === 'SUCCESS';
+
+        // Tasarım kodlarına göre sınıf ve ikon seçimi
+        let type = isPush ? 'notification' : (isSuccess ? 'call' : 'missed-call');
+        let icon = isPush ? 'task' : (isSuccess ? 'phone' : 'missed');
+
+        return {
+          id: log.historyId,
+          group: group,
+          type: type,
+          // Backend'den hatırlatıcı adı gelmezse varsayılan başlıklar gösterilir
+          name: log.reminder?.title || (isPush ? 'Sistem Bildirimi' : 'Asistan Araması'),
+          sub: log.errorMessage || (isPush ? 'Bildirim iletildi' : (isSuccess ? 'Gelen Sesli Arama' : 'Cevapsız Sesli Arama')),
+          time: dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          badge: isSuccess ? 'İletildi' : (isPush ? 'Başarısız' : 'Cevapsız'),
+          badgeClass: isSuccess 
+            ? 'bg-teal-50 dark:bg-[#34D399]/10 text-[#0f4c3a] dark:text-[#34D399]' 
+            : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
+          iconBg: isSuccess 
+            ? 'bg-teal-50 dark:bg-[#00BBA7]/10' 
+            : 'bg-red-50 dark:bg-red-900/20',
+          iconColor: isSuccess 
+            ? 'text-[#0f4c3a] dark:text-[#00BBA7]' 
+            : 'text-red-500 dark:text-red-400',
+          icon: icon,
+          redBorder: !isSuccess
+        };
+      });
+
+      setItems(formattedItems);
+    } catch (error) {
+      console.error("Geçmiş çekilirken hata:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (e, historyId) => {
+    e.stopPropagation(); // Kartın içine tıklanmasını engeller
+    try {
+      await deleteReminderHistory(historyId);
+      setItems((prev) => prev.filter((item) => item.id !== historyId));
+      showToast('Kayıt başarıyla silindi.');
+    } catch (error) {
+      showToast('Kayıt silinirken hata oluştu.');
+    }
+  };
 
   const filterMap = {
-    all: ALL_ITEMS,
-    call: ALL_ITEMS.filter((i) => i.type === 'call' || i.type === 'missed-call'),
-    notification: ALL_ITEMS.filter((i) => i.type === 'notification'),
+    all: items,
+    call: items.filter((i) => i.type === 'call' || i.type === 'missed-call'),
+    notification: items.filter((i) => i.type === 'notification'),
   };
 
   const filtered = filterMap[activeFilter].filter(
@@ -78,10 +132,21 @@ export default function HistoryPage() {
             i.sub.toLowerCase().includes(search.toLowerCase())
   );
 
-  const groups = ['BUGÜN', 'DÜN'];
+  // Gelen verilere göre grupları (Bugün, Dün, 15 Ağustos vb.) dinamik olarak oluştur
+  const groups = [...new Set(filtered.map(item => item.group))];
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto pb-10">
+
+      {/* Toast Bildirimi */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+          {toast.message}
+        </div>
+      )}
 
       {/* Üst Kısım: Başlık ve Arama */}
       <div className="flex justify-between items-start mb-8">
@@ -102,7 +167,7 @@ export default function HistoryPage() {
             placeholder="Geçmişte ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#27272A] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-800 dark:text-[#F8FAFC] placeholder-gray-400 dark:placeholder-[#71717A] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 shadow-sm transition-all"
           />
         </div>
       </div>
@@ -113,7 +178,7 @@ export default function HistoryPage() {
           <button
             key={f.key}
             onClick={() => setActiveFilter(f.key)}
-            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all ${
+            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all focus:outline-none ${
               activeFilter === f.key
                 ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white shadow-sm'
                 : 'bg-teal-50/50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] hover:bg-teal-50 dark:hover:bg-[#00BBA7]/20'
@@ -126,54 +191,71 @@ export default function HistoryPage() {
 
       {/* Liste */}
       <div className="space-y-8">
-        {filtered.length === 0 && (
+        {loading ? (
+          <div className="text-center text-gray-400 dark:text-[#71717A] py-16 text-sm font-medium">
+            Kayıtlar yükleniyor...
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center text-gray-400 dark:text-[#71717A] py-16 text-sm font-medium">
             Sonuç bulunamadı.
           </div>
-        )}
-
-        {groups.map((group) => {
-          const items = filtered.filter((i) => i.group === group);
-          if (items.length === 0) return null;
-          return (
-            <div key={group}>
-              <h3 className="text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-4">
-                {group}
-              </h3>
-              <div className="space-y-3">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`bg-white dark:bg-[#27272A] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer ${
-                      item.redBorder
-                        ? 'border-red-200 dark:border-red-900/50 relative overflow-hidden'
-                        : 'border-gray-100 dark:border-white/10'
-                    }`}
-                  >
-                    {item.redBorder && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-400 dark:bg-red-500" />
-                    )}
-                    <div className={`flex items-center gap-4 ${item.redBorder ? 'pl-2' : ''}`}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.iconBg} ${item.iconColor}`}>
-                        {ICON_MAP[item.icon]}
+        ) : (
+          groups.map((group) => {
+            const groupItems = filtered.filter((i) => i.group === group);
+            if (groupItems.length === 0) return null;
+            return (
+              <div key={group} className="animate-in fade-in duration-300">
+                <h3 className="text-xs font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-4">
+                  {group}
+                </h3>
+                <div className="space-y-3">
+                  {groupItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`bg-white dark:bg-[#27272A] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-default group ${
+                        item.redBorder
+                          ? 'border-red-200 dark:border-red-900/50 relative overflow-hidden'
+                          : 'border-gray-100 dark:border-white/10'
+                      }`}
+                    >
+                      {item.redBorder && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-400 dark:bg-red-500" />
+                      )}
+                      <div className={`flex items-center gap-4 ${item.redBorder ? 'pl-2' : ''}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.iconBg} ${item.iconColor}`}>
+                          {ICON_MAP[item.icon]}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">{item.name}</h4>
+                          <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5 max-w-sm truncate">{item.sub}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">{item.name}</h4>
-                        <p className="text-[13px] text-gray-500 dark:text-[#CBD5E1] mt-0.5">{item.sub}</p>
+                      
+                      <div className="text-right flex items-center gap-3">
+                        <div className="flex flex-col items-end">
+                          <div className="text-xs font-medium text-gray-500 dark:text-[#71717A] mb-1.5">{item.time}</div>
+                          <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${item.badgeClass}`}>
+                            {item.badge}
+                          </span>
+                        </div>
+                        {/* Silme Butonu - Sadece üzerine gelindiğinde (hover) çıkar */}
+                        <button 
+                          onClick={(e) => handleDelete(e, item.id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="Kaydı Sil"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs font-medium text-gray-500 dark:text-[#71717A] mb-1.5">{item.time}</div>
-                      <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${item.badgeClass}`}>
-                        {item.badge}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

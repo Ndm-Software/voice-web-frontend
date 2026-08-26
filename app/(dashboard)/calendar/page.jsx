@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getReminders, deleteReminder } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-const VIEWS = ['Gün', 'Hafta', 'Ay'];
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const MONTHS = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -13,14 +13,15 @@ const MONTHS = [
 
 export default function CalendarPage() {
   const realToday = new Date(); // Gerçek güncel tarih
-  const [activeView, setActiveView]   = useState('Ay');
   const [selectedDay, setSelectedDay] = useState(realToday.getDate());
-  const [calMonth, setCalMonth]       = useState(realToday.getMonth());
-  const [calYear, setCalYear]         = useState(realToday.getFullYear());
+  const [calMonth, setCalMonth] = useState(realToday.getMonth());
+  const [calYear, setCalYear] = useState(realToday.getFullYear());
 
   // Gerçek hatırlatıcı verisi
-  const [reminders, setReminders]     = useState([]);
-  const [loadingRem, setLoadingRem]   = useState(true);
+  const [reminders, setReminders] = useState([]);
+  const [loadingRem, setLoadingRem] = useState(true);
+
+  const router = useRouter();
 
   // Sayfa açılışında hatırlatıcıları çek
   useEffect(() => {
@@ -48,13 +49,11 @@ export default function CalendarPage() {
 
   // --- SİLME FONKSİYONU ---
   const handleDelete = async (reminderId) => {
-    // Yanlışlıkla tıklamalara karşı onay iste
     const isConfirmed = window.confirm("Bu hatırlatıcıyı silmek istediğinize emin misiniz?");
     if (!isConfirmed) return;
 
     try {
       await deleteReminder(reminderId);
-      // Başarılı olursa, silinen hatırlatıcıyı state'den filtreleyerek ekrandan anında kaldırıyoruz
       setReminders((prevReminders) => prevReminders.filter((r) => (r.reminderId || r.id) !== reminderId));
     } catch (error) {
       console.error("Silme işlemi başarısız:", error);
@@ -80,7 +79,7 @@ export default function CalendarPage() {
     calendarCells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
   }
 
-  // 2. Mevcut Ayın Günleri (Bugün kontrolü ile)
+  // 2. Mevcut Ayın Günleri
   for (let i = 1; i <= daysInMonth; i++) {
     const isToday =
       realToday.getDate() === i &&
@@ -90,25 +89,24 @@ export default function CalendarPage() {
     calendarCells.push({ day: i, isCurrentMonth: true, isToday });
   }
 
-  // 3. Sonraki Ayın Günleri (Izgarayı 35 veya 42'ye tamamla)
+  // 3. Sonraki Ayın Günleri
   const totalCells = calendarCells.length;
   const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
   for (let i = 1; i <= remainingCells; i++) {
     calendarCells.push({ day: i, isCurrentMonth: false });
   }
-  // -----------------------------------
 
   // Seçili güne ait hatırlatıcıları filtrele
   const dayReminders = reminders.filter((r) => {
     const d = new Date(r.eventDatetime);
     return (
       d.getFullYear() === calYear &&
-      d.getMonth()    === calMonth &&
-      d.getDate()     === selectedDay
+      d.getMonth() === calMonth &&
+      d.getDate() === selectedDay
     );
   });
 
-  // Hangi günlerde etkinlik var? (Takvim noktası için)
+  // Hangi günlerde etkinlik var?
   const daysWithReminders = new Set(
     reminders
       .filter((r) => {
@@ -124,7 +122,7 @@ export default function CalendarPage() {
       {/* SOL: Büyük Takvim */}
       <div className="flex-[2] bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none flex flex-col h-[calc(100vh-140px)]">
 
-        {/* Takvim Üst Kontrolleri */}
+        {/* Takvim Üst Kontrolleri (Seçiciler kaldırıldı, tamamen sadeleştirildi) */}
         <div className="flex justify-between items-center mb-6 px-2">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-[#0f4c3a] dark:text-[#00BBA7]">
@@ -142,23 +140,6 @@ export default function CalendarPage() {
                 </svg>
               </button>
             </div>
-          </div>
-
-          {/* Görünüm Seçici */}
-          <div className="hidden sm:flex bg-gray-100 dark:bg-[#1A1A1A]/50 rounded-lg p-1">
-            {VIEWS.map((view) => (
-              <button
-                key={view}
-                onClick={() => setActiveView(view)}
-                className={`px-5 py-1.5 text-sm rounded-md transition-all ${
-                  activeView === view
-                    ? 'font-bold bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm'
-                    : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
-                }`}
-              >
-                {view}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -191,24 +172,20 @@ export default function CalendarPage() {
                 <div
                   key={index}
                   onClick={() => setSelectedDay(cell.day)}
-                  className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-sm font-medium cursor-pointer transition-colors flex flex-col items-end ${
-                    isSelected
+                  className={`border-b border-r border-gray-100 dark:border-white/10 p-2 text-sm font-medium cursor-pointer transition-colors flex flex-col items-end ${isSelected
                       ? 'bg-teal-50/80 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] font-bold'
                       : 'text-gray-800 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
+                    }`}
                 >
-                  {/* BUGÜN İŞARETLEYİCİSİ: Eğer bugün ise yeşil daire rozeti içinde göster */}
                   <span
-                    className={`flex items-center justify-center text-xs font-bold ${
-                      cell.isToday
+                    className={`flex items-center justify-center text-xs font-bold ${cell.isToday
                         ? 'w-6 h-6 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7] text-white shadow-sm'
                         : ''
-                    }`}
+                      }`}
                   >
                     {cell.day}
                   </span>
 
-                  {/* Etkinlik (Hatırlatıcı) İndikatörü */}
                   {hasEvent && (
                     <div className={`w-full h-1.5 rounded-full mt-auto mb-1 ${isSelected ? 'bg-[#0f4c3a] dark:bg-[#00BBA7]' : 'bg-[#0f4c3a]/50 dark:bg-[#00BBA7]/50'}`} />
                   )}
@@ -239,7 +216,6 @@ export default function CalendarPage() {
           {!loadingRem && dayReminders.length === 0 && (
             <div className="bg-white dark:bg-[#27272A] rounded-xl p-8 border border-gray-100 dark:border-white/10 shadow-sm text-center">
               <p className="text-gray-400 dark:text-[#71717A] text-sm font-medium mb-4">Bu gün için etkinlik yok.</p>
-              {/* URL'ye seçili tarihi YYYY-MM-DD formatında ekliyoruz */}
               <Link
                 href={`/calendar/new?date=${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`}
                 className="inline-flex items-center px-4 py-2 bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold rounded-xl hover:bg-[#0a3629] dark:hover:bg-[#009F8E] transition-colors"
@@ -258,38 +234,61 @@ export default function CalendarPage() {
             return (
               <div
                 key={r.reminderId || r.id}
-                // group class'ını ekledik ki hover (üzerine gelme) efektini yakalayabilelim
-                className="group bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden"
+                onClick={() => router.push(`/calendar/${r.reminderId || r.id}`)}
+                className="group bg-white dark:bg-[#27272A] rounded-xl p-5 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none hover:shadow-md transition-all cursor-pointer relative overflow-hidden flex flex-col min-h-[110px]"
               >
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0f4c3a] dark:bg-[#00BBA7]" />
                 
-                {/* SİLME BUTONU: Normalde görünmez (opacity-0), kartın üzerine gelince görünür (group-hover:opacity-100) */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Kartın kendisine tıklanma olayını engeller
-                    handleDelete(r.reminderId || r.id);
-                  }}
-                  title="Hatırlatıcıyı Sil"
-                  className="absolute right-4 top-4 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-
-                <div className="flex justify-between items-start mb-3 pl-2 pr-6">
+                <div className="flex justify-between items-start mb-3 pl-2">
                   <span className="text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide bg-[#0f4c3a]/10 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]">
                     {r.repeatType === 'NONE' ? 'TEK' 
                       : r.repeatType === 'DAILY' ? 'GÜNLÜK' 
                       : r.repeatType === 'WEEKLY' ? 'HAFTALIK' 
                       : 'AYLIK'}
                   </span>
-                  <span className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">{timeStr}</span>
+
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-[#F8FAFC] bg-gray-50 dark:bg-[#1A1A1A]/60 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-white/5">
+                    <svg className="w-3.5 h-3.5 text-[#0f4c3a] dark:text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{timeStr}</span>
+                  </div>
                 </div>
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-2 pl-2 pr-6">{r.title}</h4>
-                {r.description && (
-                  <p className="text-gray-500 dark:text-[#CBD5E1] text-[13px] pl-2 pr-6 line-clamp-2">{r.description}</p>
-                )}
+
+                <div className="pl-2 pr-2 mb-1 flex-1">
+                  <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-1 pr-16">{r.title}</h4>
+                  {r.description && (
+                    <p className="text-gray-500 dark:text-[#CBD5E1] text-[13px] line-clamp-2 pr-16">{r.description}</p>
+                  )}
+                </div>
+
+                <div className="absolute right-3 bottom-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/calendar/${r.reminderId || r.id}`);
+                    }}
+                    title="Düzenle"
+                    className="p-1.5 bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200/70 dark:border-white/10 text-gray-500 hover:text-[#0f4c3a] hover:bg-teal-50 dark:text-[#CBD5E1] dark:hover:bg-[#00BBA7]/20 dark:hover:text-[#00BBA7] rounded-lg shadow-sm transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(r.reminderId || r.id);
+                    }}
+                    title="Sil"
+                    className="p-1.5 bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200/70 dark:border-white/10 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-[#CBD5E1] dark:hover:bg-red-500/20 dark:hover:text-red-400 rounded-lg shadow-sm transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             );
           })}

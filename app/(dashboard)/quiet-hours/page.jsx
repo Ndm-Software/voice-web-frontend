@@ -1,72 +1,177 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { getSilentHours, createSilentHour, updateSilentHour, deleteSilentHour, getUserSettings, patchUserSettings } from '@/lib/api';
 
-// ─── Başlangıç State'i ───────────────────────────────────────────────
-const INITIAL_DAYS = [
-  { name: 'Pazartesi',  enabled: true, startTime: '22:00', endTime: '07:00' },
-  { name: 'Salı',       enabled: true, startTime: '22:00', endTime: '07:00' },
-  { name: 'Çarşamba',   enabled: true, startTime: '22:00', endTime: '07:00' },
-  { name: 'Perşembe',   enabled: true, startTime: '22:00', endTime: '07:00' },
-  { name: 'Cuma',       enabled: true, startTime: '23:00', endTime: '09:00' },
-  { name: 'Cumartesi',  enabled: true, startTime: '22:00', endTime: '07:00' },
-  { name: 'Pazar',      enabled: true, startTime: '22:00', endTime: '07:00' },
+// Backend'in beklediği gün formatları
+const DAY_MAPPINGS = [
+  { name: 'Pazartesi', value: 'MONDAY' },
+  { name: 'Salı',      value: 'TUESDAY' },
+  { name: 'Çarşamba',  value: 'WEDNESDAY' },
+  { name: 'Perşembe',  value: 'THURSDAY' },
+  { name: 'Cuma',      value: 'FRIDAY' },
+  { name: 'Cumartesi', value: 'SATURDAY' },
+  { name: 'Pazar',     value: 'SUNDAY' },
 ];
 
-export default function QuietHoursPage() {
-  const [days, setDays] = useState(INITIAL_DAYS);
-  const [emergencyEnabled, setEmergencyEnabled] = useState(true);
-  const [toast, setToast] = useState(null); // { message: string }
+const DEFAULT_START = '22:00';
+const DEFAULT_END = '07:00';
 
-  // ─── Yardımcı Fonksiyonlar ────────────────────────────────────────
-  const showToast = (message) => {
-    setToast({ message });
+export default function QuietHoursPage() {
+  const [days, setDays] = useState([]);
+  const [emergencyEnabled, setEmergencyEnabled] = useState(false);
+  const [toast, setToast] = useState(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 1. İLK YÜKLEMEDE API'DEN VERİLERİ ÇEK
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Backend'den verileri paralel olarak çek
+      const [dbHours, settings] = await Promise.all([
+        getSilentHours(),
+        getUserSettings()
+      ]);
+
+      // Acil Durum Ayarı (User Settings tablosundan gelir)
+      if (settings) {
+        setEmergencyEnabled(settings.emergencyOverride || false);
+      }
+
+      // Günleri backend verisiyle eşleştir (Mapper)
+      const initialDays = DAY_MAPPINGS.map(dayMap => {
+        const existing = (dbHours || []).find(h => h.dayOfWeek === dayMap.value);
+        if (existing) {
+          return {
+            ...dayMap,
+            enabled: true,
+            silentHourId: existing.silentHourId,
+            startTime: existing.silentStart,
+            endTime: existing.silentEnd,
+          };
+        }
+        return {
+          ...dayMap,
+          enabled: false,
+          silentHourId: null,
+          startTime: DEFAULT_START,
+          endTime: DEFAULT_END,
+        };
+      });
+
+      setDays(initialDays);
+    } catch (error) {
+      console.error("Veriler çekilirken hata:", error);
+      showToast("Ayarlar yüklenemedi. Lütfen sayfayı yenileyin.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
+  // 2. DEĞİŞİKLİKLERİ BACKEND'E KAYDET
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // A) Acil Durum (Emergency Override) Güncellemesi
+      await patchUserSettings({ emergencyOverride: emergencyEnabled });
+
+      // B) Sessiz Saat Güncellemeleri
+      // Promise.all ile tüm istekleri aynı anda atarak performansı artırıyoruz
+      const promises = days.map(async (day) => {
+        if (day.enabled) {
+          if (day.silentHourId) {
+            // Var olanı güncelle (PATCH)
+            return updateSilentHour(day.silentHourId, {
+              silentStart: day.startTime,
+              silentEnd: day.endTime
+            });
+          } else {
+            // Yeni oluştur (POST)
+            return createSilentHour({
+              dayOfWeek: day.value,
+              silentStart: day.startTime,
+              silentEnd: day.endTime
+            });
+          }
+        } else {
+          // Açıkken kapatıldıysa (DELETE)
+          if (day.silentHourId) {
+            return deleteSilentHour(day.silentHourId);
+          }
+        }
+      });
+
+      await Promise.all(promises);
+      
+      showToast('Tüm ayarlarınız başarıyla kaydedildi!');
+      
+      // Oluşturulan yeni ID'leri almak için sayfayı arka planda tazele
+      await fetchData(); 
+    } catch (error) {
+      console.error("Kaydetme hatası:", error);
+      showToast('Ayarlar kaydedilirken bir hata oluştu.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const toggleDay = (index) => {
-    setDays((prev) =>
-      prev.map((day, i) =>
-        i === index ? { ...day, enabled: !day.enabled } : day
-      )
-    );
+    setDays((prev) => prev.map((day, i) => i === index ? { ...day, enabled: !day.enabled } : day));
   };
 
   const updateTime = (index, field, value) => {
-    setDays((prev) =>
-      prev.map((day, i) =>
-        i === index ? { ...day, [field]: value } : day
-      )
-    );
+    setDays((prev) => prev.map((day, i) => i === index ? { ...day, [field]: value } : day));
   };
 
-  // Pazartesi'nin saatlerini tüm günlere uygula
   const applyToAll = () => {
     const ref = days[0];
-    setDays((prev) =>
-      prev.map((day) => ({ ...day, startTime: ref.startTime, endTime: ref.endTime }))
-    );
+    setDays((prev) => prev.map((day) => ({ ...day, startTime: ref.startTime, endTime: ref.endTime })));
     showToast(`${ref.startTime} – ${ref.endTime} tüm günlere uygulandı.`);
   };
 
-  const handleOptimize = () => {
-    showToast('Program optimize edildi! Voia önerilen saatler uygulandı.');
-  };
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-5xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <div className="text-gray-500 font-medium">Ayarlar yükleniyor...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-
-      {/* ─── Toast Bildirimi ─────────────────────────────────────── */}
+    <div className="w-full max-w-5xl mx-auto pb-10">
+      {/* Toast Bildirimi */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
+        <div className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl text-white text-sm font-bold ${toast.type === 'error' ? 'bg-red-500' : 'bg-[#0f4c3a] dark:bg-[#00BBA7]'}`}>
           <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={toast.type === 'error' ? "M6 18L18 6M6 6l12 12" : "M5 13l4 4L19 7"} />
           </svg>
           {toast.message}
         </div>
       )}
 
-      {/* ─── Üst Başlık ve Arama ─────────────────────────────────── */}
+      {/* Üst Geri Dönüş Linki */}
+      <Link href="/profile" className="inline-flex items-center text-sm font-bold text-gray-500 dark:text-[#71717A] hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors mb-6 group">
+        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mr-3 group-hover:bg-[#0f4c3a] dark:group-hover:bg-[#00BBA7] group-hover:text-white transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </div>
+        Profil Ayarlarına Dön
+      </Link>
+
+      {/* Üst Başlık ve Kaydet Butonu */}
       <div className="flex justify-between items-start mb-8">
         <div>
           <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">Sessiz Saatler</h2>
@@ -74,11 +179,33 @@ export default function QuietHoursPage() {
             Dinlenme zamanlarınızı ve rahatsız edilmeyeceğiniz saatleri buradan yönetin.
           </p>
         </div>
+        
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex items-center px-6 py-3 bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isSaving ? (
+            <>
+              <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              Kaydediliyor...
+            </>
+          ) : (
+             <>
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              Değişiklikleri Kaydet
+            </>
+          )}
+        </button>
       </div>
 
       <div className="flex gap-8">
-
-        {/* ─── SOL: Haftalık Program ─────────────────────────────── */}
+        {/* SOL: Haftalık Program */}
         <div className="flex-[2] bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold">
@@ -89,7 +216,7 @@ export default function QuietHoursPage() {
             </div>
             <button
               onClick={applyToAll}
-              className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline transition-colors"
+              className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline transition-colors focus:outline-none"
             >
               Tüm günlere uygula
             </button>
@@ -142,7 +269,6 @@ export default function QuietHoursPage() {
                     !day.enabled ? 'opacity-50 pointer-events-none' : ''
                   }`}
                 >
-                  {/* Başlangıç Saati */}
                   <div className="relative">
                     <input
                       type="time"
@@ -152,10 +278,7 @@ export default function QuietHoursPage() {
                       className="w-28 text-center py-2 bg-gray-50 dark:bg-[#1A1A1A]/40 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0f4c3a]/20 dark:focus:ring-[#00BBA7]/20 cursor-pointer"
                     />
                   </div>
-
                   <span className="text-gray-400 dark:text-[#71717A] font-medium">-</span>
-
-                  {/* Bitiş Saati */}
                   <div className="relative">
                     <input
                       type="time"
@@ -171,14 +294,14 @@ export default function QuietHoursPage() {
           </div>
         </div>
 
-        {/* ─── SAĞ: Bilgi Kartları ───────────────────────────────── */}
+        {/* SAĞ: Bilgi Kartları */}
         <div className="flex-1 flex flex-col gap-6">
-
-          {/* Yerel Saat Kartı */}
           <div className="bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
             <h4 className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-2">YEREL SAAT</h4>
             <div className="flex items-end gap-2 mb-3">
-              <span className="text-4xl font-extrabold text-[#0f4c3a] dark:text-[#00BBA7] leading-none">21:38</span>
+              <span className="text-4xl font-extrabold text-[#0f4c3a] dark:text-[#00BBA7] leading-none">
+                {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
               <span className="text-sm font-bold text-gray-500 dark:text-[#CBD5E1] mb-1">GMT+3</span>
             </div>
             <p className="text-xs text-gray-500 dark:text-[#CBD5E1] leading-relaxed">
@@ -186,7 +309,6 @@ export default function QuietHoursPage() {
             </p>
           </div>
 
-          {/* Acil Durum Kartı */}
           <div className="bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-6 border border-red-100 dark:border-red-900/30 shadow-sm dark:shadow-none">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-10 h-10 rounded-full bg-white dark:bg-[#3F3F46] flex items-center justify-center text-red-500 dark:text-red-400 shrink-0 border border-red-100 dark:border-red-900/30 shadow-sm">
@@ -197,7 +319,7 @@ export default function QuietHoursPage() {
               <div>
                 <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-1">Acil Durum Geçişi</h4>
                 <p className="text-xs text-gray-600 dark:text-[#CBD5E1] leading-relaxed">
-                  Aynı kişiden 3 dakika içinde gelen ardışık aramaların veya mesajların sessiz saatleri aşmasına izin verin.
+                  Aynı kişiden 3 dakika içinde gelen ardışık aramaların sessiz saatleri aşmasına izin verin.
                 </p>
               </div>
             </div>
@@ -211,7 +333,6 @@ export default function QuietHoursPage() {
               >
                 {emergencyEnabled ? 'AKTİF' : 'PASİF'}
               </span>
-              {/* Acil Durum Toggle */}
               <button
                 onClick={() => setEmergencyEnabled((prev) => !prev)}
                 className="relative inline-flex items-center cursor-pointer focus:outline-none"
@@ -236,7 +357,6 @@ export default function QuietHoursPage() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -1,42 +1,358 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { onForegroundMessage } from '@/lib/firebase';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import GlobalNotification from '@/components/GlobalNotification';
+import { getReminderHistory } from '@/lib/api';
 
-export default function GlobalNotification() {
-  const [toast, setToast] = useState(null);
+const clearAuthStorage = () => {
+  const AUTH_KEYS = ['token', 'access_token', 'refresh_token', 'authToken', 'auth', 'user'];
+  AUTH_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+};
+
+export default function DashboardLayout({ children }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isDark, setIsDark] = useState(false);
+  const [activeLang, setActiveLang] = useState('TR');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const [notifications, setNotifications] = useState([]);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const data = await getReminderHistory();
+      const list = Array.isArray(data) ? data : (data?.data || []);
+      
+      const sorted = list.sort(
+        (a, b) => new Date(b.sentAt || b.createdAt) - new Date(a.sentAt || a.createdAt)
+      );
+      setNotifications(sorted.slice(0, 5));
+
+      const lastSeen = Number(localStorage.getItem('voia_last_seen_notif') || 0);
+      const latestItemTime = sorted.length > 0 
+        ? new Date(sorted[0].sentAt || sorted[0].createdAt).getTime() 
+        : 0;
+
+      if (pathname === '/history' || (latestItemTime > 0 && latestItemTime <= lastSeen)) {
+        setHasUnread(false);
+      } else if (latestItemTime > lastSeen) {
+        setHasUnread(true);
+      }
+    } catch (error) {
+      console.error('Bildirim geçmişi alınamadı:', error);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  // Sayfa değiştikçe bildirimleri tazele
+  useEffect(() => {
+    fetchNotifications();
+  }, [pathname]);
+
+  // CANLI BİLDİRİM DİNLEYİCİSİ (Sayfa yenilemeye gerek kalmadan noktayı anında açar)
+  useEffect(() => {
+    const handleLiveNotification = () => {
+      if (pathname !== '/history') {
+        setHasUnread(true);
+        fetchNotifications();
+      }
+    };
+
+    window.addEventListener('voia_new_notification', handleLiveNotification);
+    return () => window.removeEventListener('voia_new_notification', handleLiveNotification);
+  }, [pathname]);
+
+  const markNotificationsAsRead = () => {
+    localStorage.setItem('voia_last_seen_notif', String(Date.now()));
+    setHasUnread(false);
+    setShowNotifications(false);
+  };
 
   useEffect(() => {
-    // Uygulama açıkken gelen mesajları dinle
-    const unsubscribe = onForegroundMessage((payload) => {
-      const title = payload.notification?.title || 'Yeni Bildirim';
-      const body = payload.notification?.body || '';
-      
-      setToast({ title, body });
-      
-      // 5 saniye sonra otomatik kapanması için
-      setTimeout(() => setToast(null), 5000);
-    });
+    if (pathname === '/history') {
+      localStorage.setItem('voia_last_seen_notif', String(Date.now()));
+      setHasUnread(false);
+    }
+  }, [pathname]);
 
-    return () => {
-      if (unsubscribe) unsubscribe();
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
     };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Eğer toast yoksa hiçbir şey render etme (Görünmez bileşen)
-  if (!toast) return null;
+  useEffect(() => {
+    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      setIsDark(true);
+    } else {
+      document.documentElement.classList.remove('dark');
+      setIsDark(false);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
+
+  const menuItems = [
+    { name: 'Panel', path: '/panel', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+    { name: 'Takvim', path: '/calendar', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { name: 'Geçmiş', path: '/history', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+    { name: 'Profil', path: '/profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
+  ];
+
+  const formatTime = (dateString) => {
+    if (!dateString) return 'Az önce';
+    const d = new Date(dateString);
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div className="fixed bottom-8 right-8 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold animate-[fadeIn_0.3s_ease-out]">
-      <div className="mt-0.5">
-        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
+    <div className="min-h-screen flex bg-gray-50 dark:bg-[#1A1A1A] font-sans transition-colors duration-300">
+      
+      <GlobalNotification />
+
+      {/* Sol Menü (Sidebar) */}
+      <div className="w-64 bg-white dark:bg-[#1A1A1A] border-r border-gray-100 dark:border-white/10 flex flex-col transition-colors duration-300">
+        <div className="p-8">
+          <h1 className="text-3xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] tracking-tight">Voia</h1>
+          <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-1 tracking-wider uppercase">Kişisel Sesli Asistan</p>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.path || (item.path !== '/' && pathname?.startsWith(item.path));
+            return (
+              <Link
+                key={item.name}
+                href={item.path}
+                className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${
+                  isActive 
+                    ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm' 
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5'
+                }`}
+              >
+                <svg className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'text-gray-400 dark:text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon}></path>
+                </svg>
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-6">
+          <Link 
+            href="/calendar/new" 
+            className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3.5 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+            Yeni Hatırlatıcı Oluştur
+          </Link>
+        </div>
       </div>
-      <div className="flex flex-col">
-        <span className="text-sm">{toast.title}</span>
-        {toast.body && <span className="text-xs font-normal opacity-90 mt-1">{toast.body}</span>}
+
+      {/* Sağ Taraf - İçerik Alanı */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        {/* TOPBAR */}
+        <header className="h-20 bg-white dark:bg-[#1A1A1A] border-b border-gray-100 dark:border-white/10 flex items-center justify-between px-10 shrink-0 transition-colors duration-300">
+          
+          <div className="w-[450px] relative">
+            <input 
+              type="text" 
+              placeholder="Hatırlatıcılarda ara..." 
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-[#27272A] border-none rounded-2xl text-sm text-gray-800 dark:text-[#F8FAFC] font-medium focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/20 transition-all placeholder-gray-400 dark:placeholder-[#71717A]"
+            />
+            <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+
+          <div className="flex items-center gap-6">
+            
+            <div className="flex items-center gap-3 text-xs font-bold text-gray-400 dark:text-gray-500">
+              <button
+                onClick={() => setActiveLang('TR')}
+                className={`transition-colors ${activeLang === 'TR' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'hover:text-gray-800 dark:hover:text-gray-200'}`}
+              >TR</button>
+              <button
+                onClick={() => setActiveLang('EN')}
+                className={`transition-colors ${activeLang === 'EN' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'hover:text-gray-800 dark:hover:text-gray-200'}`}
+              >EN</button>
+            </div>
+            
+            <div className="flex items-center gap-5 border-l border-gray-200 dark:border-white/10 pl-6">
+              
+              {/* Bildirim İkonu */}
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => {
+                    setShowNotifications((p) => !p);
+                    if (!showNotifications) fetchNotifications();
+                  }}
+                  className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative focus:outline-none"
+                  aria-label="Bildirimleri aç"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#1A1A1A]"></span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 top-10 w-80 bg-white dark:bg-[#27272A] rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">Bildirimler</h3>
+                      {hasUnread && (
+                        <span className="text-[10px] font-bold bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] px-2 py-0.5 rounded-full">
+                          Yeni
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="divide-y divide-gray-50 dark:divide-white/10 max-h-72 overflow-y-auto">
+                      {loadingNotifs ? (
+                        <div className="p-5 text-center text-xs text-gray-400">Yükleniyor...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-5 text-center text-xs text-gray-400">Henüz bildirim kaydı bulunmuyor.</div>
+                      ) : (
+                        notifications.map((n, i) => {
+                          const isVoice = n.historyType === 'VOICE_CALL';
+                          return (
+                            <div
+                              key={n.historyId || i}
+                              className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${
+                                i === 0 && hasUnread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''
+                              }`}
+                            >
+                              <span className="text-xl shrink-0">{isVoice ? '📞' : '🔔'}</span>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`text-sm truncate ${
+                                    i === 0 && hasUnread
+                                      ? 'font-bold text-gray-800 dark:text-[#F8FAFC]'
+                                      : 'font-medium text-gray-600 dark:text-[#CBD5E1]'
+                                  }`}
+                                >
+                                  {n.reminder?.title || (isVoice ? 'Sesli Arama' : 'Sistem Bildirimi')}
+                                </p>
+                                <p className="text-[12px] text-gray-400 dark:text-[#71717A] mt-0.5 truncate">
+                                  {isVoice ? 'Sesli hatırlatma yapıldı' : 'Bildirim iletildi'} – {formatTime(n.sentAt || n.createdAt)}
+                                </p>
+                              </div>
+                              {i === 0 && hasUnread && (
+                                <div className="w-2 h-2 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full shrink-0 mt-1.5 ml-auto" />
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10">
+                      <Link 
+                        href="/history" 
+                        onClick={markNotificationsAsRead} 
+                        className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline block text-center"
+                      >
+                        Tüm geçmişi görüntüle →
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tema Değiştirme Butonu */}
+              <button 
+                onClick={toggleTheme} 
+                className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-[#27272A] rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
+                title={isDark ? "Açık Moda Geç" : "Koyu Moda Geç"}
+              >
+                <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                  <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </div>
+
+                <div className={`relative w-6 h-6 bg-white dark:bg-[#3F3F46] rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 z-10 ${isDark ? 'translate-x-8' : 'translate-x-0'}`}>
+                  {isDark ? (
+                    <svg className="w-3.5 h-3.5 text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5 text-[#0f4c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                  )}
+                </div>
+              </button>
+
+              {/* Profil Menüsü */}
+              <div ref={profileRef} className="relative">
+                <button 
+                  onClick={() => setShowProfileMenu((p) => !p)} 
+                  className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-white/10 cursor-pointer shadow-sm hover:ring-2 hover:ring-[#0f4c3a] dark:hover:ring-[#00BBA7] transition-all block focus:outline-none"
+                >
+                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
+                </button>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#27272A] rounded-xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden py-1">
+                    <button
+                      onClick={() => { setShowProfileMenu(false); router.push('/profile'); }}
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                      Profil
+                    </button>
+                    <div className="border-t border-gray-100 dark:border-white/10 my-1" />
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        clearAuthStorage();
+                        router.push('/');
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                      Çıkış Yap
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-10">
+          {children}
+        </main>
       </div>
+
     </div>
   );
 }

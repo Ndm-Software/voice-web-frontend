@@ -4,10 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import GlobalNotification from '@/components/GlobalNotification';
+import { getReminderHistory } from '@/lib/api';
 
-// Auth storage'ı temizleyen yardımcı fonksiyon.
-// Projedeki token key'i backend entegrasyonuna göre belirleneceğinden
-// yaygın kullanılan tüm key'ler temizleniyor.
 const clearAuthStorage = () => {
   const AUTH_KEYS = ['token', 'access_token', 'refresh_token', 'authToken', 'auth', 'user'];
   AUTH_KEYS.forEach((key) => {
@@ -24,10 +22,64 @@ export default function DashboardLayout({ children }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Dinamik Bildirim State'leri
+  const [notifications, setNotifications] = useState([]);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Bildirim paneli ve Profil Menüsü dışına tıklayınca kapat
+  // Backend'den bildirim geçmişini çek ve okunmamış kontrolü yap
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const data = await getReminderHistory();
+      const list = Array.isArray(data) ? data : (data?.data || []);
+      
+      const sorted = list.sort(
+        (a, b) => new Date(b.sentAt || b.createdAt) - new Date(a.sentAt || a.createdAt)
+      );
+      setNotifications(sorted.slice(0, 5));
+
+      // Okunmamış bildirim kontrolü
+      const lastSeen = Number(localStorage.getItem('voia_last_seen_notif') || 0);
+      const latestItemTime = sorted.length > 0 
+        ? new Date(sorted[0].sentAt || sorted[0].createdAt).getTime() 
+        : 0;
+
+      // Kullanıcı geçmiş sayfasındaysa veya en son bildirimden sonra incelediyse nokta söner
+      if (pathname === '/history' || (latestItemTime > 0 && latestItemTime <= lastSeen)) {
+        setHasUnread(false);
+      } else if (latestItemTime > lastSeen) {
+        setHasUnread(true);
+      }
+    } catch (error) {
+      console.error('Bildirim geçmişi alınamadı:', error);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [pathname]);
+
+  // Geçmiş sayfasına tıklandığında okunmuş sayma fonksiyonu
+  const markNotificationsAsRead = () => {
+    localStorage.setItem('voia_last_seen_notif', String(Date.now()));
+    setHasUnread(false);
+    setShowNotifications(false);
+  };
+
+  useEffect(() => {
+    if (pathname === '/history') {
+      localStorage.setItem('voia_last_seen_notif', String(Date.now()));
+      setHasUnread(false);
+    }
+  }, [pathname]);
+
+  // Dışarı tıklandığında menüleri kapatma
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -41,7 +93,7 @@ export default function DashboardLayout({ children }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Sayfa ilk yüklendiğinde kullanıcının tercih ettiği temayı (varsa) getir
+  // Sayfa ilk yüklendiğinde kullanıcının tercih ettiği temayı getir
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark');
@@ -52,7 +104,6 @@ export default function DashboardLayout({ children }) {
     }
   }, []);
 
-  // Tema Değiştirme Fonksiyonu
   const toggleTheme = () => {
     if (isDark) {
       document.documentElement.classList.remove('dark');
@@ -72,9 +123,18 @@ export default function DashboardLayout({ children }) {
     { name: 'Profil', path: '/profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
   ];
 
+  const formatTime = (dateString) => {
+    if (!dateString) return 'Az önce';
+    const d = new Date(dateString);
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-50 dark:bg-[#1A1A1A] font-sans transition-colors duration-300">
       
+      {/* Bildirim Yöneticisi */}
+      <GlobalNotification />
+
       {/* Sol Menü (Sidebar) */}
       <div className="w-64 bg-white dark:bg-[#1A1A1A] border-r border-gray-100 dark:border-white/10 flex flex-col transition-colors duration-300">
         
@@ -92,7 +152,6 @@ export default function DashboardLayout({ children }) {
               <Link
                 key={item.name}
                 href={item.path}
-                // BURASI GÜNCELLENDİ: focus:outline-none eklendi ve border mantığı düzeltildi
                 className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${
                   isActive 
                     ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm' 
@@ -152,15 +211,20 @@ export default function DashboardLayout({ children }) {
             
             <div className="flex items-center gap-5 border-l border-gray-200 dark:border-white/10 pl-6">
               
-              {/* Bildirim İkonu */}
+              {/* Bildirim İkonu & Dinamik Kırmızı Nokta */}
               <div ref={notifRef} className="relative">
                 <button
-                  onClick={() => setShowNotifications((p) => !p)}
-                  className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative"
+                  onClick={() => {
+                    setShowNotifications((p) => !p);
+                    if (!showNotifications) fetchNotifications();
+                  }}
+                  className="text-gray-400 dark:text-gray-500 hover:text-[#0f4c3a] dark:hover:text-[#00BBA7] transition-colors relative focus:outline-none"
                   aria-label="Bildirimleri aç"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#1A1A1A]"></span>
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#1A1A1A]"></span>
+                  )}
                 </button>
 
                 {/* Bildirim Dropdown Paneli */}
@@ -168,26 +232,59 @@ export default function DashboardLayout({ children }) {
                   <div className="absolute right-0 top-10 w-80 bg-white dark:bg-[#27272A] rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
                       <h3 className="text-sm font-bold text-gray-800 dark:text-[#F8FAFC]">Bildirimler</h3>
-                      <span className="text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">2 yeni</span>
+                      {hasUnread && (
+                        <span className="text-[10px] font-bold bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] px-2 py-0.5 rounded-full">
+                          Yeni
+                        </span>
+                      )}
                     </div>
+
                     <div className="divide-y divide-gray-50 dark:divide-white/10 max-h-72 overflow-y-auto">
-                      {[
-                        { icon: '🔔', title: 'Doktor Randevusu', sub: 'Bugün 14:30 – 2 saat sonra', unread: true },
-                        { icon: '📞', title: 'Cevapsız Arama', sub: 'Annem – 14:32', unread: true },
-                        { icon: '✅', title: 'Günlük Özet Hazır', sub: 'Yapay zeka analiziniz hazır', unread: false },
-                      ].map((n, i) => (
-                        <div key={i} className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${n.unread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''}`}>
-                          <span className="text-xl shrink-0">{n.icon}</span>
-                          <div>
-                            <p className={`text-sm ${n.unread ? 'font-bold text-gray-800 dark:text-[#F8FAFC]' : 'font-medium text-gray-600 dark:text-[#CBD5E1]'}`}>{n.title}</p>
-                            <p className="text-[12px] text-gray-400 dark:text-[#71717A] mt-0.5">{n.sub}</p>
-                          </div>
-                          {n.unread && <div className="w-2 h-2 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full shrink-0 mt-1.5 ml-auto" />}
-                        </div>
-                      ))}
+                      {loadingNotifs ? (
+                        <div className="p-5 text-center text-xs text-gray-400">Yükleniyor...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-5 text-center text-xs text-gray-400">Henüz bildirim kaydı bulunmuyor.</div>
+                      ) : (
+                        notifications.map((n, i) => {
+                          const isVoice = n.historyType === 'VOICE_CALL';
+                          return (
+                            <div
+                              key={n.historyId || i}
+                              className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${
+                                i === 0 && hasUnread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''
+                              }`}
+                            >
+                              <span className="text-xl shrink-0">{isVoice ? '📞' : '🔔'}</span>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`text-sm truncate ${
+                                    i === 0 && hasUnread
+                                      ? 'font-bold text-gray-800 dark:text-[#F8FAFC]'
+                                      : 'font-medium text-gray-600 dark:text-[#CBD5E1]'
+                                  }`}
+                                >
+                                  {n.reminder?.title || (isVoice ? 'Sesli Arama' : 'Sistem Bildirimi')}
+                                </p>
+                                <p className="text-[12px] text-gray-400 dark:text-[#71717A] mt-0.5 truncate">
+                                  {isVoice ? 'Sesli hatırlatma yapıldı' : 'Bildirim iletildi'} – {formatTime(n.sentAt || n.createdAt)}
+                                </p>
+                              </div>
+                              {i === 0 && hasUnread && (
+                                <div className="w-2 h-2 bg-[#0f4c3a] dark:bg-[#00BBA7] rounded-full shrink-0 mt-1.5 ml-auto" />
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
+
+                    {/* Tüm Geçmişi Görüntüle Linki (Kırmızı Noktayı Söndürür) */}
                     <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10">
-                      <Link href="/history" onClick={() => setShowNotifications(false)} className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline">
+                      <Link 
+                        href="/history" 
+                        onClick={markNotificationsAsRead} 
+                        className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline block text-center"
+                      >
                         Tüm geçmişi görüntüle →
                       </Link>
                     </div>
@@ -195,25 +292,21 @@ export default function DashboardLayout({ children }) {
                 )}
               </div>
 
-              {/* TEMA DEĞİŞTİRME BUTONU (Custom Toggle Switch) */}
+              {/* TEMA DEĞİŞTİRME BUTONU */}
               <button 
                 onClick={toggleTheme} 
                 className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-[#27272A] rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
                 title={isDark ? "Açık Moda Geç" : "Koyu Moda Geç"}
               >
-                {/* Arka Plan İkonları (Sabit ve Soluk) */}
                 <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                   <svg className="w-4 h-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 </div>
 
-                {/* Hareketli Yuvarlak (Thumb) */}
                 <div className={`relative w-6 h-6 bg-white dark:bg-[#3F3F46] rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 z-10 ${isDark ? 'translate-x-8' : 'translate-x-0'}`}>
                   {isDark ? (
-                    // Koyu Mod Aktifken İçerideki İkon
                     <svg className="w-3.5 h-3.5 text-[#00BBA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                   ) : (
-                    // Açık Mod Aktifken İçerideki İkon
                     <svg className="w-3.5 h-3.5 text-[#0f4c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                   )}
                 </div>
@@ -228,7 +321,6 @@ export default function DashboardLayout({ children }) {
                   <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />
                 </button>
 
-                {/* Profil Dropdown */}
                 {showProfileMenu && (
                   <div className="absolute right-0 top-12 w-48 bg-white dark:bg-[#27272A] rounded-xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden py-1">
                     <button
@@ -263,8 +355,6 @@ export default function DashboardLayout({ children }) {
           {children}
         </main>
       </div>
-
-
 
     </div>
   );

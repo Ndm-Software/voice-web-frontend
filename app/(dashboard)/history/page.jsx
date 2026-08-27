@@ -20,16 +20,16 @@ const ICON_MAP = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
     </svg>
   ),
-  task: (
+  silent: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
     </svg>
-  ),
+  )
 };
 
 const FILTERS = [
   { key: 'all',          label: 'Tüm Geçmiş' },
-  { key: 'call',        label: 'Sadece Sesli Aramalar' },
+  { key: 'call',         label: 'Sadece Sesli Aramalar' },
   { key: 'notification', label: 'Sadece Bildirimler' },
 ];
 
@@ -54,16 +54,25 @@ export default function HistoryPage() {
     try {
       const backendLogs = await getReminderHistory();
       
-      // Backend verilerini UI'ın beklediği objelere (Mapping) çevirme
+      const rawSilenced = localStorage.getItem('voia_silenced_records');
+      const silencedRecords = rawSilenced ? JSON.parse(rawSilenced) : [];
+
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      // Verileri tarihe göre yeniden eskiye doğru sıralıyoruz
-      const sortedLogs = (backendLogs || []).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+      const getValidDate = (log) => {
+        const raw = log.sentAt || log.createdAt || log.reminder?.eventDatetime;
+        if (!raw) return new Date();
+        const d = new Date(raw);
+        return isNaN(d.getTime()) ? new Date() : d;
+      };
 
-      const formattedItems = sortedLogs.map(log => {
-        const dateObj = new Date(log.sentAt);
+      const sortedLogs = (backendLogs || []).sort((a, b) => getValidDate(b) - getValidDate(a));
+
+      const formattedItems = sortedLogs.map((log) => {
+        const dateObj = getValidDate(log);
+        const logTime = dateObj.getTime();
         const isToday = dateObj.toDateString() === today.toDateString();
         const isYesterday = dateObj.toDateString() === yesterday.toDateString();
         
@@ -72,33 +81,53 @@ export default function HistoryPage() {
         else if (isYesterday) group = 'DÜN';
         else group = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }).toUpperCase();
 
-        const isPush = log.historyType === 'PUSH';
-        const isSuccess = log.status === 'SUCCESS';
+        const isPush = String(log.historyType).includes('PUSH');
+        const isSuccess = log.status === 'SUCCESS' || log.status === 'DELIVERED' || log.status === 'COMPLETED';
 
-        // Tasarım kodlarına göre sınıf ve ikon seçimi
-        let type = isPush ? 'notification' : (isSuccess ? 'call' : 'missed-call');
-        let icon = isPush ? 'task' : (isSuccess ? 'phone' : 'missed');
+        const isSilenced = silencedRecords.some((s) => {
+          const matchKey = (log.historyId && String(log.historyId) === s.key) ||
+                           (log.reminderId && String(log.reminderId) === s.key) ||
+                           (log.reminder?.title && log.reminder.title === s.key);
+          const timeClose = Math.abs(s.time - logTime) < 180000;
+          return matchKey && timeClose;
+        });
+
+        const isFailed = !isSuccess || isSilenced;
+
+        let type = isPush ? 'notification' : (isFailed ? 'missed-call' : 'call');
+        // Checklist yerine doğrudan yeşil zil (bell) ikonu bağlandı
+        let icon = isPush ? (isSilenced ? 'silent' : 'bell') : (isFailed ? 'missed' : 'phone');
+
+        let badge = 'İletildi';
+        let badgeClass = 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]';
+        let sub = isPush ? 'Bildirim iletildi.' : 'Gelen Sesli Arama';
+        let redBorder = false;
+
+        if (isSilenced) {
+          badge = isPush ? 'Sessize Alındı' : 'Cevapsız';
+          badgeClass = 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400';
+          sub = isPush ? 'Sessiz saat devrede olduğu için bildirim susturuldu.' : 'Sessiz saat devrede olduğu için arama çalmadı.';
+          redBorder = true;
+        } else if (!isSuccess) {
+          badge = isPush ? 'Başarısız' : 'Cevapsız';
+          badgeClass = 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400';
+          sub = log.errorMessage || (isPush ? 'Bildirim gönderilemedi.' : 'Cevapsız Sesli Arama');
+          redBorder = true;
+        }
 
         return {
-          id: log.historyId,
+          id: log.historyId || log.id,
           group: group,
           type: type,
-          // Backend'den hatırlatıcı adı gelmezse varsayılan başlıklar gösterilir
           name: log.reminder?.title || (isPush ? 'Sistem Bildirimi' : 'Asistan Araması'),
-          sub: log.errorMessage || (isPush ? 'Bildirim iletildi' : (isSuccess ? 'Gelen Sesli Arama' : 'Cevapsız Sesli Arama')),
+          sub: sub,
           time: dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          badge: isSuccess ? 'İletildi' : (isPush ? 'Başarısız' : 'Cevapsız'),
-          badgeClass: isSuccess 
-            ? 'bg-teal-50 dark:bg-[#34D399]/10 text-[#0f4c3a] dark:text-[#34D399]' 
-            : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
-          iconBg: isSuccess 
-            ? 'bg-teal-50 dark:bg-[#00BBA7]/10' 
-            : 'bg-red-50 dark:bg-red-900/20',
-          iconColor: isSuccess 
-            ? 'text-[#0f4c3a] dark:text-[#00BBA7]' 
-            : 'text-red-500 dark:text-red-400',
+          badge: badge,
+          badgeClass: badgeClass,
+          iconBg: redBorder ? 'bg-red-50 dark:bg-red-900/20' : 'bg-teal-50 dark:bg-[#00BBA7]/10',
+          iconColor: redBorder ? 'text-red-500 dark:text-red-400' : 'text-[#0f4c3a] dark:text-[#00BBA7]',
           icon: icon,
-          redBorder: !isSuccess
+          redBorder: redBorder
         };
       });
 
@@ -111,7 +140,7 @@ export default function HistoryPage() {
   };
 
   const handleDelete = async (e, historyId) => {
-    e.stopPropagation(); // Kartın içine tıklanmasını engeller
+    e.stopPropagation();
     try {
       await deleteReminderHistory(historyId);
       setItems((prev) => prev.filter((item) => item.id !== historyId));
@@ -127,17 +156,15 @@ export default function HistoryPage() {
     notification: items.filter((i) => i.type === 'notification'),
   };
 
-  const filtered = filterMap[activeFilter].filter(
+  const filtered = (filterMap[activeFilter] || items).filter(
     (i) => i.name.toLowerCase().includes(search.toLowerCase()) ||
             i.sub.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Gelen verilere göre grupları (Bugün, Dün, 15 Ağustos vb.) dinamik olarak oluştur
-  const groups = [...new Set(filtered.map(item => item.group))];
+  const groups = [...new Set(filtered.map((item) => item.group))];
 
   return (
     <div className="w-full max-w-4xl mx-auto pb-10">
-
       {/* Toast Bildirimi */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
@@ -178,7 +205,7 @@ export default function HistoryPage() {
           <button
             key={f.key}
             onClick={() => setActiveFilter(f.key)}
-            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all focus:outline-none ${
+            className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all focus:outline-none cursor-pointer ${
               activeFilter === f.key
                 ? 'bg-[#0f4c3a] dark:bg-[#00BBA7] text-white shadow-sm'
                 : 'bg-teal-50/50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7] hover:bg-teal-50 dark:hover:bg-[#00BBA7]/20'
@@ -212,9 +239,9 @@ export default function HistoryPage() {
                   {groupItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`bg-white dark:bg-[#27272A] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-default group ${
+                      className={`bg-white dark:bg-[#27272A] rounded-2xl p-4 flex items-center justify-between border shadow-sm dark:shadow-none hover:shadow-md transition-shadow cursor-default group relative overflow-hidden ${
                         item.redBorder
-                          ? 'border-red-200 dark:border-red-900/50 relative overflow-hidden'
+                          ? 'border-red-200 dark:border-red-900/50'
                           : 'border-gray-100 dark:border-white/10'
                       }`}
                     >
@@ -223,7 +250,7 @@ export default function HistoryPage() {
                       )}
                       <div className={`flex items-center gap-4 ${item.redBorder ? 'pl-2' : ''}`}>
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.iconBg} ${item.iconColor}`}>
-                          {ICON_MAP[item.icon]}
+                          {ICON_MAP[item.icon] || ICON_MAP.bell}
                         </div>
                         <div>
                           <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px]">{item.name}</h4>
@@ -238,10 +265,9 @@ export default function HistoryPage() {
                             {item.badge}
                           </span>
                         </div>
-                        {/* Silme Butonu - Sadece üzerine gelindiğinde (hover) çıkar */}
                         <button 
                           onClick={(e) => handleDelete(e, item.id)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                           title="Kaydı Sil"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -31,25 +31,22 @@ const CALL_OPTIONS = [
 
 export default function NewReminderPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // URL parametrelerini okumak için
-  const initialDate = searchParams.get('date') || ''; // URL'de date varsa onu al, yoksa boş bırak
+  const searchParams = useSearchParams();
+  const initialDate = searchParams.get('date') || '';
 
   // Form state
   const [title, setTitle]               = useState('');
   const [description, setDescription]   = useState('');
-  const [date, setDate]                 = useState(initialDate); // URL'den gelen tarih varsa onu kullan
+  const [date, setDate]                 = useState(initialDate);
   const [time, setTime]                 = useState('');
-  const [repeatType, setRepeatType]     = useState('NONE'); // Varsayılan olarak tekrarsız seçili
+  const [repeatType, setRepeatType]     = useState('NONE');
   const [isRepeatOpen, setIsRepeatOpen] = useState(false);
-  const [pushMinutes, setPushMinutes]   = useState(0);       // dakika cinsinden
-  const [callMinutes, setCallMinutes]   = useState(undefined); // undefined = arama yok
+  const [pushMinutes, setPushMinutes]   = useState(0);       // 0 = Zamanında
+  const [callMinutes, setCallMinutes]   = useState(undefined);
 
-  // Dil listesi (backend'den)
-  const [languages, setLanguages]       = useState([]);
+  // Dil listesi
   const [loadingLangs, setLoadingLangs] = useState(true);
   const [isLangOpen, setIsLangOpen]     = useState(false);
-  // Dil seçimi sadece bilgilendirici — backend reminder'da languageId yok,
-  // user-settings'ten alınır. Dropdown readonly info olarak gösteriliyor.
   const [selectedLangName, setSelectedLangName] = useState('Yükleniyor...');
 
   // UI state
@@ -57,7 +54,6 @@ export default function NewReminderPage() {
   const [error, setError]       = useState(null);
   const [toast, setToast]       = useState(null);
 
-  // Sayfa açılışında kullanıcının Profil Ayarlarındaki Asistan Dilini yükle
   useEffect(() => {
     const fetchUserLanguage = async () => {
       try {
@@ -89,12 +85,11 @@ export default function NewReminderPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const selectedRepeatLabel = REPEAT_OPTIONS.find(r => r.value === repeatType)?.label ?? 'Yok';
+  const selectedRepeatLabel = REPEAT_OPTIONS.find(r => r.value === repeatType)?.label ?? 'Tekrarlanmasın';
 
   const handleSave = async () => {
     setError(null);
 
-    // Basit validasyon
     if (!title.trim()) {
       setError('Lütfen bir başlık girin.');
       return;
@@ -104,23 +99,24 @@ export default function NewReminderPage() {
       return;
     }
 
-    // Tarih + saati ISO 8601'e çevir
     const eventDatetime = new Date(`${date}T${time}:00`).toISOString();
     if (isNaN(new Date(eventDatetime).getTime())) {
       setError('Geçersiz tarih veya saat formatı.');
       return;
     }
 
+    // Backend createReminder DTO'suna tam uyumlu payload
     const payload = {
-      title:          title.trim(),
+      title: title.trim(),
+      description: description.trim() || undefined,
       eventDatetime,
       repeatType,
-      isUrgent:       false // Backend beklentisi
+      pushMinutesBefore: typeof pushMinutes === 'number' ? pushMinutes : 0,
     };
 
-    if (description.trim()) payload.description       = description.trim();
-    if (pushMinutes !== undefined) payload.pushMinutesBefore  = pushMinutes;
-    if (callMinutes !== undefined) payload.voiceMinutesBefore = callMinutes;
+    if (callMinutes !== undefined && typeof callMinutes === 'number') {
+      payload.voiceMinutesBefore = callMinutes;
+    }
 
     setLoading(true);
     try {
@@ -147,19 +143,19 @@ export default function NewReminderPage() {
         </div>
       )}
 
-      {/* Sayfa İçeriği: Ana Kart */}
+      {/* Ana Form Kartı */}
       <div className="bg-white dark:bg-[#27272A] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-white/10 transition-colors duration-300">
 
         <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
 
-          {/* Hata mesajı */}
+          {/* Hata Mesajı */}
           {error && (
             <div className="px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium">
               {error}
             </div>
           )}
 
-          {/* 1. Satır: Başlık */}
+          {/* Başlık */}
           <div>
             <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
               BAŞLIK *
@@ -173,10 +169,8 @@ export default function NewReminderPage() {
             />
           </div>
 
-          {/* 2. Satır: Asistan Dili (bilgilendirici) ve Tekrar */}
+          {/* Asistan Dili ve Tekrar */}
           <div className="grid grid-cols-2 gap-6">
-
-            {/* ASİSTAN DİLİ — Salt Okunur (Profil Ayarlarından Yönetilir) */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider">
@@ -197,7 +191,6 @@ export default function NewReminderPage() {
               </div>
             </div>
 
-            {/* TEKRAR */}
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 TEKRAR
@@ -238,7 +231,7 @@ export default function NewReminderPage() {
             </div>
           </div>
 
-          {/* 3. Satır: Tarih ve Saat */}
+          {/* Tarih ve Saat */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
@@ -268,7 +261,7 @@ export default function NewReminderPage() {
             </div>
           </div>
 
-          {/* 4. Satır: Açıklama */}
+          {/* Açıklama */}
           <div>
             <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
               AÇIKLAMA
@@ -282,9 +275,8 @@ export default function NewReminderPage() {
             />
           </div>
 
-          {/* 5. Satır: Zamanlama Butonları */}
+          {/* Zamanlama Butonları */}
           <div className="grid grid-cols-2 gap-6 pt-2">
-            {/* Bildirim Zamanlaması */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
                 Bildirim Zamanlaması
@@ -307,7 +299,6 @@ export default function NewReminderPage() {
               </div>
             </div>
 
-            {/* Sesli Arama Zamanlaması */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
                 Sesli Arama Zamanlaması

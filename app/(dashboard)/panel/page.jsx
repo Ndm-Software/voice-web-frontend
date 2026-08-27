@@ -3,9 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getUserProfile, getReminders, updateDevice, deleteReminder } from '@/lib/api'; // deleteReminder eklendi
-import { requestPushPermissionAndGetToken } from '@/lib/firebase';
-import { onForegroundMessage } from '@/lib/firebase';
+import { getUserProfile, getReminders, deleteReminder, getReminderHistory } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const MONTHS = [
@@ -20,7 +18,7 @@ export default function DashboardPage() {
   const [reminders, setReminders] = useState([]);
   const [loadingRem, setLoadingRem] = useState(true);
 
-  // Sessiz Saatler için yeni durum state'i
+  // Sessiz Saatler için durum state'i
   const [quietHoursStatus, setQuietHoursStatus] = useState("Hesaplanıyor...");
 
   // Gerçek zamanlı başlangıç tarihleri
@@ -29,6 +27,7 @@ export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
 
   const router = useRouter();
+  const [todayCallsCount, setTodayCallsCount] = useState(0);
 
   // 1. KULLANICI VE HATIRLATICI VERİLERİNİ ÇEKME
   useEffect(() => {
@@ -56,116 +55,84 @@ export default function DashboardPage() {
 
     fetchUser();
     fetchReminders();
-    // fetchSettings() BURADAN KALDIRILDI!
   }, []);
 
   // 2. AKILLI SESSİZ SAATLER HESAPLAYICISI (LOCALSTORAGE)
+  // 2. AKILLI SESSİZ SAATLER HESAPLAYICISI (BACKEND ENTEGRASYONU)
   useEffect(() => {
-    const calculateQuietHours = () => {
-      const savedSettings = localStorage.getItem('voia_quiet_hours');
-      if (!savedSettings) {
-        setQuietHoursStatus("Kapalı"); // Ayar yapılmamışsa varsayılan olarak kapalı
-        return;
-      }
+    const calculateQuietHours = async () => {
+      try {
+        const { getSilentHours } = await import('@/lib/api');
+        const rules = await getSilentHours();
 
-      const daysConfig = JSON.parse(savedSettings);
-      const now = new Date();
+        if (!Array.isArray(rules) || rules.length === 0) {
+          setQuietHoursStatus("Kapalı");
+          return;
+        }
 
-      // JavaScript'te pazar=0, pzt=1'dir. Bizim days dizimizde pzt=0, pazar=6
-      const jsDayToConfigIndex = [6, 0, 1, 2, 3, 4, 5];
-      const todayConfig = daysConfig[jsDayToConfigIndex[now.getDay()]];
+        const now = new Date();
+        const daysEN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+        const daysTR = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
 
-      if (!todayConfig.enabled) {
+        const currentDayEN = daysEN[now.getDay()];
+        const currentDayTR = daysTR[now.getDay()];
+
+        const todayRule = rules.find((r) => {
+          const d = (r.dayOfWeek || '').toUpperCase().trim();
+          return d === currentDayEN || d === currentDayTR;
+        });
+
+        if (!todayRule || !todayRule.silentStart || !todayRule.silentEnd) {
+          setQuietHoursStatus("Kapalı");
+          return;
+        }
+
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const [startH, startM] = todayRule.silentStart.split(':').map(Number);
+        const [endH, endM] = todayRule.silentEnd.split(':').map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+
+        let isActive = false;
+        if (startMinutes > endMinutes) {
+          isActive = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+        } else {
+          isActive = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+        }
+
+        setQuietHoursStatus(isActive ? "Açık" : "Kapalı");
+      } catch (err) {
+        console.warn("Sessiz saat durumu hesaplanamadı:", err);
         setQuietHoursStatus("Kapalı");
-        return;
       }
-
-      // Saatleri dakikaya çevirip karşılaştırma yapıyoruz
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const [startH, startM] = todayConfig.startTime.split(':').map(Number);
-      const [endH, endM] = todayConfig.endTime.split(':').map(Number);
-      const startMinutes = startH * 60 + startM;
-      const endMinutes = endH * 60 + endM;
-
-      let isActive = false;
-      if (startMinutes > endMinutes) {
-        // Gece yarısını geçiyor (Örn: 22:00'den ertesi sabah 07:00'ye)
-        isActive = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-      } else {
-        // Aynı gün içinde (Örn: 10:00'dan 15:00'e)
-        isActive = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-      }
-
-      setQuietHoursStatus(isActive ? "Açık" : "Kapalı");
     };
 
     calculateQuietHours();
-
-    // Her 1 dakikada bir saati kontrol edip durumu güncellesin
     const interval = setInterval(calculateQuietHours, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // 3. ÖN PLAN BİLDİRİM DİNLEYİCİSİ
+  // 3. BUGÜNKÜ ARAMALARIN SAYISI
   useEffect(() => {
-    const unsubscribe = onForegroundMessage((payload) => {
-      const title = payload?.notification?.title || 'Yeni Bildirim';
-      const body = payload?.notification?.body || '';
+    const fetchTodayCalls = async () => {
+      try {
+        const history = await getReminderHistory();
+        const todayStr = new Date().toDateString();
+        
+        const todayCalls = (history || []).filter(log => {
+          const logDate = new Date(log.sentAt).toDateString();
+          return logDate === todayStr && log.historyType === 'VOICE_CALL';
+        });
 
-      toast(
-        (t) => (
-          <div className="flex flex-col gap-1">
-            <span className="font-bold text-[15px] text-[#00BBA7]">{title}</span>
-            <span className="text-sm text-gray-200">{body}</span>
-          </div>
-        ),
-        {
-          icon: '🔔',
-          id: payload?.messageId,
-        }
-      );
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
+        setTodayCallsCount(todayCalls.length);
+      } catch (err) {
+        console.error("Bugünkü aramalar alınamadı:", err);
       }
     };
+    fetchTodayCalls();
   }, []);
 
-  // 4. FİREBASE VE CİHAZ KAYDI
-  useEffect(() => {
-    const initFirebaseAndRegisterDevice = async () => {
-      let pushToken = null;
-
-      try {
-        pushToken = await requestPushPermissionAndGetToken();
-      } catch (firebaseError) {
-        console.warn("Firebase hatası:", firebaseError.message);
-      }
-
-      try {
-        if (pushToken) {
-          await updateDevice({
-            installationId: localStorage.getItem('voia_installation_id') || "Bilinmeyen-ID",
-            platform: 'WEB',
-            deviceName: window.navigator.userAgent.substring(0, 99),
-            pushToken: pushToken
-          });
-        }
-      } catch (apiError) {
-        if (apiError?.status === 409) {
-          console.warn("Sistem Notu: Bu tarayıcıdaki token zaten aktif. Uygulama normal çalışmasına devam ediyor.");
-        } else {
-          console.error("Cihaz kaydedilirken hata:", apiError);
-        }
-      }
-    };
-
-    initFirebaseAndRegisterDevice();
-  }, []);
-
-  // Panel sayfası için silme fonksiyon
+  // Panel sayfası için silme fonksiyonu
   const handleDelete = async (e, reminderId) => {
     e.stopPropagation();
     const isConfirmed = window.confirm("Bu hatırlatıcıyı silmek istediğinize emin misiniz?");
@@ -238,7 +205,7 @@ export default function DashboardPage() {
           {loadingUser ? 'Yükleniyor...' : `Merhaba, ${user?.firstName || 'Kullanıcı'}!`}
         </h2>
         <p className="text-gray-500 dark:text-[#CBD5E1] text-[15px]">
-          İşte bugün için planladıkların ve asistanının notları.
+          Bugün için planladıkların ve hatırlatıcıların.
         </p>
       </div>
 
@@ -265,7 +232,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-1">BUGÜNKİ ARAMALAR</p>
-            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">4</p>
+            <p className="text-[22px] font-extrabold text-gray-800 dark:text-[#F8FAFC] leading-none">{todayCallsCount}</p>
           </div>
         </Link>
 
@@ -317,7 +284,7 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={r.reminderId || r.id}
-                    onClick={() => router.push('/calendar')} // Karta tıklanınca takvime gider
+                    onClick={() => router.push('/calendar')}
                     className="group bg-white dark:bg-[#27272A] rounded-[16px] p-5 flex items-center shadow-sm dark:shadow-none dark:border dark:border-white/10 relative overflow-hidden h-[76px] hover:shadow-md dark:hover:border-[#00BBA7]/40 transition-all cursor-pointer block"
                   >
                     <div className="absolute left-6 top-5 bottom-5 w-1.5 rounded-full bg-[#0f4c3a] dark:bg-[#00BBA7]" />
@@ -330,7 +297,6 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    {/* AKSİYON BUTONLARI (Sadece üzerine gelince görünür) */}
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-[#27272A] pl-2">
                       <button
                         onClick={(e) => {

@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getSilentHours, createSilentHour, updateSilentHour, deleteSilentHour, getUserSettings, patchUserSettings } from '@/lib/api';
+import { 
+  getSilentHours, 
+  createSilentHour, 
+  updateSilentHour, 
+  deleteSilentHour 
+} from '@/lib/api';
 
 // Backend'in beklediği gün formatları
 const DAY_MAPPINGS = [
@@ -20,41 +25,33 @@ const DEFAULT_END = '07:00';
 
 export default function QuietHoursPage() {
   const [days, setDays] = useState([]);
-  const [emergencyEnabled, setEmergencyEnabled] = useState(false);
   const [toast, setToast] = useState(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 1. İLK YÜKLEMEDE API'DEN VERİLERİ ÇEK
-  useEffect(() => {
-    fetchData();
-  }, []);
-
+  // 1. İLK YÜKLEMEDE API'DEN SESSİZ SAATLERİ ÇEK
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Backend'den verileri paralel olarak çek
-      const [dbHours, settings] = await Promise.all([
-        getSilentHours(),
-        getUserSettings()
-      ]);
-
-      // Acil Durum Ayarı (User Settings tablosundan gelir)
-      if (settings) {
-        setEmergencyEnabled(settings.emergencyOverride || false);
-      }
+      const rawSilentHours = await getSilentHours();
+      const dbHours = Array.isArray(rawSilentHours) 
+        ? rawSilentHours 
+        : (rawSilentHours?.data || []);
 
       // Günleri backend verisiyle eşleştir (Mapper)
-      const initialDays = DAY_MAPPINGS.map(dayMap => {
-        const existing = (dbHours || []).find(h => h.dayOfWeek === dayMap.value);
+      const initialDays = DAY_MAPPINGS.map((dayMap) => {
+        const existing = dbHours.find(
+          (h) => (h.dayOfWeek || '').toUpperCase() === dayMap.value
+        );
+
         if (existing) {
           return {
             ...dayMap,
             enabled: true,
-            silentHourId: existing.silentHourId,
-            startTime: existing.silentStart,
-            endTime: existing.silentEnd,
+            silentHourId: existing.silentHourId || existing.id || null,
+            startTime: existing.silentStart ? existing.silentStart.slice(0, 5) : DEFAULT_START,
+            endTime: existing.silentEnd ? existing.silentEnd.slice(0, 5) : DEFAULT_END,
           };
         }
         return {
@@ -75,49 +72,46 @@ export default function QuietHoursPage() {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 2. DEĞİŞİKLİKLERİ BACKEND'E KAYDET
+  // 2. DEĞİŞİKLİKLERİ BACKEND'E KAYDET (SIRALI VE ÇAKIŞMASIZ)
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // A) Acil Durum (Emergency Override) Güncellemesi
-      await patchUserSettings({ emergencyOverride: emergencyEnabled });
-
-      // B) Sessiz Saat Güncellemeleri
-      // Promise.all ile tüm istekleri aynı anda atarak performansı artırıyoruz
-      const promises = days.map(async (day) => {
+      for (const day of days) {
         if (day.enabled) {
           if (day.silentHourId) {
-            // Var olanı güncelle (PATCH)
-            return updateSilentHour(day.silentHourId, {
+            // Var olanı güncelle (PATCH /api/silent-hours/:id)
+            await updateSilentHour(day.silentHourId, {
               silentStart: day.startTime,
               silentEnd: day.endTime
             });
           } else {
-            // Yeni oluştur (POST)
-            return createSilentHour({
+            // Yeni oluştur (POST /api/silent-hours)
+            await createSilentHour({
               dayOfWeek: day.value,
               silentStart: day.startTime,
               silentEnd: day.endTime
             });
           }
         } else {
-          // Açıkken kapatıldıysa (DELETE)
+          // Açıkken kapatıldıysa sil (DELETE /api/silent-hours/:id)
           if (day.silentHourId) {
-            return deleteSilentHour(day.silentHourId);
+            await deleteSilentHour(day.silentHourId);
           }
         }
-      });
-
-      await Promise.all(promises);
+      }
       
       showToast('Tüm ayarlarınız başarıyla kaydedildi!');
       
-      // Oluşturulan yeni ID'leri almak için sayfayı arka planda tazele
+      // Oluşturulan yeni ID'leri almak ve state'i senkronize etmek için yeniden çek
       await fetchData(); 
     } catch (error) {
       console.error("Kaydetme hatası:", error);
@@ -128,11 +122,11 @@ export default function QuietHoursPage() {
   };
 
   const toggleDay = (index) => {
-    setDays((prev) => prev.map((day, i) => i === index ? { ...day, enabled: !day.enabled } : day));
+    setDays((prev) => prev.map((day, i) => (i === index ? { ...day, enabled: !day.enabled } : day)));
   };
 
   const updateTime = (index, field, value) => {
-    setDays((prev) => prev.map((day, i) => i === index ? { ...day, [field]: value } : day));
+    setDays((prev) => prev.map((day, i) => (i === index ? { ...day, [field]: value } : day)));
   };
 
   const applyToAll = () => {
@@ -183,18 +177,18 @@ export default function QuietHoursPage() {
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center px-6 py-3 bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+          className="flex items-center px-6 py-3 bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-bold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
           {isSaving ? (
             <>
               <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4" stroke="currentColor" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
               Kaydediliyor...
             </>
           ) : (
-             <>
+            <>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
@@ -216,7 +210,7 @@ export default function QuietHoursPage() {
             </div>
             <button
               onClick={applyToAll}
-              className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline transition-colors focus:outline-none"
+              className="text-sm font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline transition-colors focus:outline-none cursor-pointer"
             >
               Tüm günlere uygula
             </button>
@@ -294,7 +288,7 @@ export default function QuietHoursPage() {
           </div>
         </div>
 
-        {/* SAĞ: Bilgi Kartları */}
+        {/* SAĞ: Bilgi Kartı */}
         <div className="flex-1 flex flex-col gap-6">
           <div className="bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
             <h4 className="text-[11px] font-bold text-gray-400 dark:text-[#71717A] uppercase tracking-wider mb-2">YEREL SAAT</h4>
@@ -307,53 +301,6 @@ export default function QuietHoursPage() {
             <p className="text-xs text-gray-500 dark:text-[#CBD5E1] leading-relaxed">
               Şu anki saat diliminiz İstanbul/Türkiye olarak ayarlanmıştır.
             </p>
-          </div>
-
-          <div className="bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-6 border border-red-100 dark:border-red-900/30 shadow-sm dark:shadow-none">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-10 h-10 rounded-full bg-white dark:bg-[#3F3F46] flex items-center justify-center text-red-500 dark:text-red-400 shrink-0 border border-red-100 dark:border-red-900/30 shadow-sm">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-800 dark:text-[#F8FAFC] text-[15px] mb-1">Acil Durum Geçişi</h4>
-                <p className="text-xs text-gray-600 dark:text-[#CBD5E1] leading-relaxed">
-                  Aynı kişiden 3 dakika içinde gelen ardışık aramaların sessiz saatleri aşmasına izin verin.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 mt-2">
-              <span
-                className={`text-xs font-bold uppercase transition-colors ${
-                  emergencyEnabled
-                    ? 'text-[#0f4c3a] dark:text-[#00BBA7]'
-                    : 'text-gray-400 dark:text-[#71717A]'
-                }`}
-              >
-                {emergencyEnabled ? 'AKTİF' : 'PASİF'}
-              </span>
-              <button
-                onClick={() => setEmergencyEnabled((prev) => !prev)}
-                className="relative inline-flex items-center cursor-pointer focus:outline-none"
-                aria-label="Acil durum geçişini aç/kapat"
-              >
-                <div
-                  className={`w-11 h-6 rounded-full peer transition-colors duration-300 ${
-                    emergencyEnabled
-                      ? 'bg-[#0f4c3a] dark:bg-[#00BBA7]'
-                      : 'bg-gray-200 dark:bg-[#52525B]'
-                  }`}
-                />
-                <div
-                  className={`absolute left-[2px] top-[2px] bg-white w-5 h-5 rounded-full border transition-transform duration-300 ${
-                    emergencyEnabled
-                      ? 'translate-x-full border-gray-300 dark:border-[#52525B]'
-                      : 'translate-x-0 border-gray-300 dark:border-[#71717A]'
-                  }`}
-                />
-              </button>
-            </div>
           </div>
         </div>
       </div>

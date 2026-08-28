@@ -31,38 +31,52 @@ export default function DashboardLayout({ children }) {
   const profileRef = useRef(null);
 
   // Backend'den bildirim geçmişini çek ve okunmamış kontrolü yap
+  // app/(dashboard)/layout.jsx
+
+  // 1. fetchNotifications fonksiyonunu 401'de duracak şekilde güvenli hale getirin:
   const fetchNotifications = async () => {
     try {
       setLoadingNotifs(true);
       const data = await getReminderHistory();
       const list = Array.isArray(data) ? data : (data?.data || []);
-      
+
       const sorted = list.sort(
         (a, b) => new Date(b.sentAt || b.createdAt) - new Date(a.sentAt || a.createdAt)
       );
       setNotifications(sorted.slice(0, 5));
 
-      // Okunmamış bildirim kontrolü
       const lastSeen = Number(localStorage.getItem('voia_last_seen_notif') || 0);
-      const latestItemTime = sorted.length > 0 
-        ? new Date(sorted[0].sentAt || sorted[0].createdAt).getTime() 
+      const latestItemTime = sorted.length > 0
+        ? new Date(sorted[0].sentAt || sorted[0].createdAt).getTime()
         : 0;
 
-      // Kullanıcı geçmiş sayfasındaysa veya en son bildirimden sonra incelediyse nokta söner
       if (pathname === '/history' || (latestItemTime > 0 && latestItemTime <= lastSeen)) {
         setHasUnread(false);
       } else if (latestItemTime > lastSeen) {
         setHasUnread(true);
       }
     } catch (error) {
-      console.error('Bildirim geçmişi alınamadı:', error);
+      // Oturum yoksa veya 401 aldıysa log basıp durdur, döngüye sokma
+      console.warn('Bildirim geçmişi alınamadı:', error.message);
+      setNotifications([]);
+      setHasUnread(false);
     } finally {
       setLoadingNotifs(false);
     }
   };
 
+  // 2. Canlı event dinleyicisini şu şekilde sadeleştirin:
   useEffect(() => {
-    fetchNotifications();
+    const handleLiveNotification = () => {
+      if (pathname !== '/history') {
+        setHasUnread(true);
+      }
+    };
+
+    window.addEventListener('voia_new_notification', handleLiveNotification);
+    return () => {
+      window.removeEventListener('voia_new_notification', handleLiveNotification);
+    };
   }, [pathname]);
 
   // Geçmiş sayfasına tıklandığında okunmuş sayma fonksiyonu
@@ -131,13 +145,13 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen flex bg-gray-50 dark:bg-[#1A1A1A] font-sans transition-colors duration-300">
-      
+
       {/* Bildirim Yöneticisi */}
       <GlobalNotification />
 
       {/* Sol Menü (Sidebar) */}
       <div className="w-64 bg-white dark:bg-[#1A1A1A] border-r border-gray-100 dark:border-white/10 flex flex-col transition-colors duration-300">
-        
+
         {/* Logo Alanı */}
         <div className="p-8">
           <h1 className="text-3xl font-bold text-[#0f4c3a] dark:text-[#00BBA7] tracking-tight">Voia</h1>
@@ -152,11 +166,10 @@ export default function DashboardLayout({ children }) {
               <Link
                 key={item.name}
                 href={item.path}
-                className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${
-                  isActive 
-                    ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm' 
+                className={`flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none border ${isActive
+                    ? 'text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50/50 dark:bg-[#00BBA7]/10 border-teal-100 dark:border-[#00BBA7]/20 shadow-sm'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
+                  }`}
               >
                 <svg className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'text-gray-400 dark:text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon}></path>
@@ -169,8 +182,8 @@ export default function DashboardLayout({ children }) {
 
         {/* Yeni Hatırlatıcı Butonu */}
         <div className="p-6">
-          <Link 
-            href="/calendar/new" 
+          <Link
+            href="/calendar/new"
             className="w-full bg-[#0f4c3a] hover:bg-[#0a3629] dark:bg-[#00BBA7] dark:hover:bg-[#009F8E] text-white font-medium py-3.5 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -181,22 +194,22 @@ export default function DashboardLayout({ children }) {
 
       {/* Sağ Taraf - İçerik Alanı */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        
+
         {/* TOPBAR */}
         <header className="h-20 bg-white dark:bg-[#1A1A1A] border-b border-gray-100 dark:border-white/10 flex items-center justify-between px-10 shrink-0 transition-colors duration-300">
-          
+
           {/* Arama Çubuğu */}
           <div className="w-[450px] relative">
-            <input 
-              type="text" 
-              placeholder="Hatırlatıcılarda ara..." 
+            <input
+              type="text"
+              placeholder="Hatırlatıcılarda ara..."
               className="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-[#27272A] border-none rounded-2xl text-sm text-gray-800 dark:text-[#F8FAFC] font-medium focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/20 transition-all placeholder-gray-400 dark:placeholder-[#71717A]"
             />
             <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
 
           <div className="flex items-center gap-6">
-            
+
             {/* Dil Seçimi */}
             <div className="flex items-center gap-3 text-xs font-bold text-gray-400 dark:text-gray-500">
               <button
@@ -208,9 +221,9 @@ export default function DashboardLayout({ children }) {
                 className={`transition-colors ${activeLang === 'EN' ? 'text-[#0f4c3a] dark:text-[#00BBA7]' : 'hover:text-gray-800 dark:hover:text-gray-200'}`}
               >EN</button>
             </div>
-            
+
             <div className="flex items-center gap-5 border-l border-gray-200 dark:border-white/10 pl-6">
-              
+
               {/* Bildirim İkonu & Dinamik Kırmızı Nokta */}
               <div ref={notifRef} className="relative">
                 <button
@@ -250,18 +263,16 @@ export default function DashboardLayout({ children }) {
                           return (
                             <div
                               key={n.historyId || i}
-                              className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${
-                                i === 0 && hasUnread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''
-                              }`}
+                              className={`flex items-start gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors ${i === 0 && hasUnread ? 'bg-teal-50/30 dark:bg-[#00BBA7]/5' : ''
+                                }`}
                             >
                               <span className="text-xl shrink-0">{isVoice ? '📞' : '🔔'}</span>
                               <div className="min-w-0 flex-1">
                                 <p
-                                  className={`text-sm truncate ${
-                                    i === 0 && hasUnread
+                                  className={`text-sm truncate ${i === 0 && hasUnread
                                       ? 'font-bold text-gray-800 dark:text-[#F8FAFC]'
                                       : 'font-medium text-gray-600 dark:text-[#CBD5E1]'
-                                  }`}
+                                    }`}
                                 >
                                   {n.reminder?.title || (isVoice ? 'Sesli Arama' : 'Sistem Bildirimi')}
                                 </p>
@@ -280,9 +291,9 @@ export default function DashboardLayout({ children }) {
 
                     {/* Tüm Geçmişi Görüntüle Linki (Kırmızı Noktayı Söndürür) */}
                     <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10">
-                      <Link 
-                        href="/history" 
-                        onClick={markNotificationsAsRead} 
+                      <Link
+                        href="/history"
+                        onClick={markNotificationsAsRead}
                         className="text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline block text-center"
                       >
                         Tüm geçmişi görüntüle →
@@ -293,8 +304,8 @@ export default function DashboardLayout({ children }) {
               </div>
 
               {/* TEMA DEĞİŞTİRME BUTONU */}
-              <button 
-                onClick={toggleTheme} 
+              <button
+                onClick={toggleTheme}
                 className="relative w-16 h-8 flex items-center bg-gray-100 dark:bg-[#27272A] rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#00BBA7]/30 shadow-inner"
                 title={isDark ? "Açık Moda Geç" : "Koyu Moda Geç"}
               >
@@ -314,8 +325,8 @@ export default function DashboardLayout({ children }) {
 
               {/* Profil Menüsü */}
               <div ref={profileRef} className="relative">
-                <button 
-                  onClick={() => setShowProfileMenu((p) => !p)} 
+                <button
+                  onClick={() => setShowProfileMenu((p) => !p)}
                   className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 dark:border-white/10 cursor-pointer shadow-sm hover:ring-2 hover:ring-[#0f4c3a] dark:hover:ring-[#00BBA7] transition-all block focus:outline-none"
                 >
                   <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces" alt="Profil" className="w-full h-full object-cover" />

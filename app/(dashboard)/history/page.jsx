@@ -84,18 +84,22 @@ export default function HistoryPage() {
         const isPush = String(log.historyType).includes('PUSH');
         const isSuccess = log.status === 'SUCCESS' || log.status === 'DELIVERED' || log.status === 'COMPLETED';
 
+        // SADECE ID eşleşirse VEYA o saniye içinde susturulduysa susturulmuştur (Başlık kontrolü kaldırıldı)
         const isSilenced = silencedRecords.some((s) => {
-          const matchKey = (log.historyId && String(log.historyId) === s.key) ||
-                           (log.reminderId && String(log.reminderId) === s.key) ||
-                           (log.reminder?.title && log.reminder.title === s.key);
-          const timeClose = Math.abs(s.time - logTime) < 180000;
-          return matchKey && timeClose;
+          if (s.id) {
+            return (
+              (log.reminderId && String(log.reminderId) === s.id) ||
+              (log.historyId && String(log.historyId) === s.id) ||
+              (log.reminder?.id && String(log.reminder.id) === s.id)
+            );
+          }
+          // ID yoksa sadece susturulma saniyesine (15 saniye tolerans) bakar, sonraki dakikaları etkilemez
+          return Math.abs(s.timestamp - logTime) < 15000;
         });
 
         const isFailed = !isSuccess || isSilenced;
 
         let type = isPush ? 'notification' : (isFailed ? 'missed-call' : 'call');
-        // Checklist yerine doğrudan yeşil zil (bell) ikonu bağlandı
         let icon = isPush ? (isSilenced ? 'silent' : 'bell') : (isFailed ? 'missed' : 'phone');
 
         let badge = 'İletildi';
@@ -133,7 +137,7 @@ export default function HistoryPage() {
 
       setItems(formattedItems);
     } catch (error) {
-      console.error("Geçmiş çekilirken hata:", error);
+      console.error("Geçmiş yüklenirken hata:", error);
     } finally {
       setLoading(false);
     }
@@ -165,7 +169,6 @@ export default function HistoryPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto pb-10">
-      {/* Toast Bildirimi */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
           <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +178,6 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Üst Kısım: Başlık ve Arama */}
       <div className="flex justify-between items-start mb-8">
         <div>
           <h2 className="text-[28px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] mb-1">Geçmiş</h2>
@@ -184,7 +186,6 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        {/* Sayfa İçi Arama */}
         <div className="relative w-64">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-[#71717A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -199,7 +200,6 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Filtre Butonları */}
       <div className="flex gap-3 mb-10">
         {FILTERS.map((f) => (
           <button
@@ -216,7 +216,6 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      {/* Liste */}
       <div className="space-y-8">
         {loading ? (
           <div className="text-center text-gray-400 dark:text-[#71717A] py-16 text-sm font-medium">

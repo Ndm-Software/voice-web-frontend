@@ -6,24 +6,26 @@ import { useRouter, useParams } from 'next/navigation';
 import { updateReminder, getReminderById, getLanguages, getUserSettings } from '@/lib/api';
 
 const REPEAT_OPTIONS = [
-  { label: 'Tekrarlanmasın', value: 'NONE'    },
-  { label: 'Her Gün',        value: 'DAILY'   },
-  { label: 'Her Hafta',      value: 'WEEKLY'  },
-  { label: 'Her Ay',         value: 'MONTHLY' },
+  { label: 'Tekrarlanmasın', value: 'NONE' },
+  { label: 'Her Gün', value: 'DAILY' },
+  { label: 'Her Hafta', value: 'WEEKLY' },
+  { label: 'Her Ay', value: 'MONTHLY' },
 ];
 
+// Bildirim zamanlama → dakika dönüşümü
 const PUSH_OPTIONS = [
-  { label: 'Zamanında', minutes: 0  },
-  { label: '5 dk',      minutes: 5  },
-  { label: '15 dk',     minutes: 15 },
-  { label: '30 dk',     minutes: 30 },
+  { label: 'Zamanında', minutes: 0 },
+  { label: '5 dk önce', minutes: 5 },
+  { label: '15 dk önce', minutes: 15 },
+  { label: '30 dk önce', minutes: 30 },
 ];
 
+// Sesli arama zamanlama → dakika dönüşümü (undefined = arama yok)
 const CALL_OPTIONS = [
-  { label: 'Yok',       minutes: undefined },
-  { label: 'Zamanında', minutes: 0         },
-  { label: '5 dk',      minutes: 5         },
-  { label: '10 dk',     minutes: 10        },
+  { label: 'Yok', minutes: null },
+  { label: 'Zamanında', minutes: 0 },
+  { label: '5 dk önce', minutes: 5 },
+  { label: '15 dk önce', minutes: 15 },
 ];
 
 export default function EditReminderPage() {
@@ -32,23 +34,23 @@ export default function EditReminderPage() {
   const reminderId = params?.id;
 
   // Form state
-  const [title, setTitle]               = useState('');
-  const [description, setDescription]   = useState('');
-  const [date, setDate]                 = useState('');
-  const [time, setTime]                 = useState('');
-  const [repeatType, setRepeatType]     = useState('NONE');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [repeatType, setRepeatType] = useState('NONE');
   const [isRepeatOpen, setIsRepeatOpen] = useState(false);
-  const [pushMinutes, setPushMinutes]   = useState(0);
-  const [callMinutes, setCallMinutes]   = useState(undefined);
+  const [pushMinutes, setPushMinutes] = useState(0);
+  const [callMinutes, setCallMinutes] = useState(null);
 
   // Dil state
-  const [loadingLangs, setLoadingLangs]         = useState(true);
+  const [loadingLangs, setLoadingLangs] = useState(true);
   const [selectedLangName, setSelectedLangName] = useState('Yükleniyor...');
 
   // Sayfa Durumları
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving]   = useState(false);
-  const [error, setError]         = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,7 +70,7 @@ export default function EditReminderPage() {
             setSelectedLangName(settings.language.name);
           } else if (settings?.languageId) {
             const langs = await getLanguages();
-            const userLang = langs.find(l => l.languageId === settings.languageId);
+            const userLang = langs.find((l) => l.languageId === settings.languageId);
             if (userLang) setSelectedLangName(userLang.name);
           } else {
             setSelectedLangName('Türkçe');
@@ -101,15 +103,17 @@ export default function EditReminderPage() {
 
         // Bildirim ve Sesli Arama süreleri
         if (rem.pushNotifications && rem.pushNotifications.length > 0) {
-          setPushMinutes(rem.pushNotifications[0].minutesBefore ?? 0);
+          setPushMinutes(Number(rem.pushNotifications[0].minutesBefore ?? 0));
         } else if (typeof rem.pushMinutesBefore === 'number') {
           setPushMinutes(rem.pushMinutesBefore);
         }
 
         if (rem.voiceCallSettings && rem.voiceCallSettings.length > 0) {
-          setCallMinutes(rem.voiceCallSettings[0].minutesBefore);
+          setCallMinutes(Number(rem.voiceCallSettings[0].minutesBefore));
         } else if (typeof rem.voiceMinutesBefore === 'number') {
           setCallMinutes(rem.voiceMinutesBefore);
+        } else {
+          setCallMinutes(null);
         }
 
       } catch (err) {
@@ -124,7 +128,7 @@ export default function EditReminderPage() {
     fetchData();
   }, [reminderId]);
 
-  const selectedRepeatLabel = REPEAT_OPTIONS.find(r => r.value === repeatType)?.label ?? 'Tekrarlanmasın';
+  const selectedRepeatLabel = REPEAT_OPTIONS.find((r) => r.value === repeatType)?.label ?? 'Tekrarlanmasın';
 
   const handleUpdate = async () => {
     setError(null);
@@ -138,8 +142,8 @@ export default function EditReminderPage() {
       return;
     }
 
-    const eventDatetime = new Date(`${date}T${time}:00`).toISOString();
-    if (isNaN(new Date(eventDatetime).getTime())) {
+    const eventDateObj = new Date(`${date}T${time}:00`);
+    if (isNaN(eventDateObj.getTime())) {
       setError('Geçersiz tarih veya saat formatı.');
       return;
     }
@@ -147,13 +151,13 @@ export default function EditReminderPage() {
     const payload = {
       title: title.trim(),
       description: description.trim() || undefined,
-      eventDatetime,
-      repeatType,
-      pushMinutesBefore: typeof pushMinutes === 'number' ? pushMinutes : 0,
+      eventDatetime: eventDateObj.toISOString(),
+      repeatType: repeatType || 'NONE',
+      pushMinutesBefore: Number(pushMinutes),
     };
 
-    if (callMinutes !== undefined && typeof callMinutes === 'number') {
-      payload.voiceMinutesBefore = callMinutes;
+    if (callMinutes !== null && typeof callMinutes === 'number') {
+      payload.voiceMinutesBefore = Number(callMinutes);
     }
 
     setIsSaving(true);
@@ -186,7 +190,7 @@ export default function EditReminderPage() {
     <div className="w-full max-w-4xl mx-auto">
       <div className="bg-white dark:bg-[#27272A] rounded-3xl p-10 shadow-sm border border-gray-100 dark:border-white/10 transition-colors duration-300">
         <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
-          
+
           {/* Hata Bildirimi */}
           {error && (
             <div className="px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium">
@@ -215,8 +219,8 @@ export default function EditReminderPage() {
                 <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider">
                   ASİSTAN DİLİ
                 </label>
-                <Link 
-                  href="/profile" 
+                <Link
+                  href="/profile"
                   className="text-[11px] font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline"
                 >
                   Ayarlardan Değiştir →
@@ -250,11 +254,10 @@ export default function EditReminderPage() {
                       <div
                         key={opt.value}
                         onClick={() => { setRepeatType(opt.value); setIsRepeatOpen(false); }}
-                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${
-                          repeatType === opt.value
+                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${repeatType === opt.value
                             ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
                             : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
-                        }`}
+                          }`}
                       >
                         {opt.label}
                         {repeatType === opt.value && (
@@ -276,27 +279,23 @@ export default function EditReminderPage() {
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 TARİH *
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
-                />
-              </div>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-2">
                 SAAT *
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
-                />
-              </div>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-[#0F172A]/50 border-none rounded-xl text-gray-800 dark:text-[#F8FAFC] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:focus:ring-[#00BBA7]/20 transition-colors"
+              />
             </div>
           </div>
 
@@ -315,22 +314,23 @@ export default function EditReminderPage() {
           </div>
 
           {/* Zamanlama Seçenekleri */}
-          <div className="grid grid-cols-2 gap-6 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+
+            {/* Bildirim Zamanlaması */}
             <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Bildirim Zamanlaması
+              <label className="block text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-3">
+                BİLDİRİM ZAMANLAMASI
               </label>
-              <div className="flex gap-2">
+              <div className="flex p-1 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-2xl border border-gray-100 dark:border-white/5 gap-1.5">
                 {PUSH_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => setPushMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      pushMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${pushMinutes === opt.minutes
+                        ? 'bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm border border-teal-100 dark:border-[#00BBA7]/30'
+                        : 'text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1] border border-transparent'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -338,27 +338,28 @@ export default function EditReminderPage() {
               </div>
             </div>
 
+            {/* Sesli Arama Zamanlaması */}
             <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Sesli Arama Zamanlaması
+              <label className="block text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-3">
+                SESLİ ARAMA ZAMANLAMASI
               </label>
-              <div className="flex gap-2">
+              <div className="flex p-1 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-2xl border border-gray-100 dark:border-white/5 gap-1.5">
                 {CALL_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => setCallMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      callMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${callMinutes === opt.minutes
+                        ? 'bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm border border-teal-100 dark:border-[#00BBA7]/30'
+                        : 'text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1] border border-transparent'
+                      }`}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
+
           </div>
 
           {/* Alt Butonlar */}

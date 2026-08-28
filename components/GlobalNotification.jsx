@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { onForegroundMessage, requestPushPermissionAndGetToken } from '@/lib/firebase';
-import { updateDevice, getSilentHours } from '@/lib/api';
+import { updateDevice, getSilentHours, getOrCreateInstallationId } from '@/lib/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { usePathname } from 'next/navigation';
 
@@ -64,13 +64,7 @@ export default function GlobalNotification() {
 
       try {
         const pushToken = await requestPushPermissionAndGetToken();
-        let installationId = localStorage.getItem('voia_installation_id');
-        if (!installationId) {
-          installationId = typeof crypto !== 'undefined' && crypto.randomUUID 
-            ? crypto.randomUUID() 
-            : 'web-' + Date.now();
-          localStorage.setItem('voia_installation_id', installationId);
-        }
+        const installationId = getOrCreateInstallationId();
 
         if (pushToken) {
           await updateDevice({

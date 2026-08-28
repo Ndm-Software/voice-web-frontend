@@ -15,7 +15,6 @@ const INITIAL_FORM = {
   callTime: 'Aninda',
 };
 
-// Karmaşık User-Agent metnini temiz "İşletim Sistemi • Tarayıcı" formatına çevirir
 const formatDeviceName = (deviceName) => {
   if (!deviceName) return "Bilinmeyen Cihaz";
 
@@ -73,7 +72,6 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. KULLANICI BİLGİLERİNİ ÇEK
         const userData = await getUserProfile();
 
         const backendData = {
@@ -90,26 +88,20 @@ export default function ProfilePage() {
           setCreatedAt(date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }));
         }
 
-        // 2. SİSTEMDEKİ DİLLERİ ÇEK
         let langs = await getLanguages();
         if (langs && langs.length > 0) {
-          // 'TR' kodlu dili her zaman listenin en başına (sola) al
           langs = langs.sort((a, b) => {
             if (a.code.toUpperCase() === 'TR') return -1;
             if (b.code.toUpperCase() === 'TR') return 1;
-            return a.name.localeCompare(b.name); // Diğer dilleri alfabetik sırala
+            return a.name.localeCompare(b.name);
           });
         }
         setLanguages(langs || []);
 
-        // 3. KULLANICININ AYARLARINI ÇEK
         const settings = await getUserSettings();
-        
-        console.log("Backend'den gelen ayarlar:", settings); 
 
         if (settings) {
           setUserSettings(settings);
-          
           const savedLangId = settings.languageId || settings.language?.languageId || settings.language?.id;
 
           setPreferences({
@@ -131,7 +123,32 @@ export default function ProfilePage() {
 
         // 4. KULLANICININ BAĞLI CİHAZLARINI ÇEK
         const userDevices = await getDevices();
-        setDevices(userDevices || []);
+        const currentInstallationId = typeof window !== 'undefined' 
+          ? localStorage.getItem('voia_installation_id') 
+          : null;
+
+        const list = Array.isArray(userDevices) ? userDevices : (userDevices?.data || []);
+
+        const formatted = list.map((dev, idx) => {
+          // 1. Tarayıcıdaki ID ile eşleşiyor mu?
+          const isExactMatch = Boolean(currentInstallationId && dev.installationId === currentInstallationId);
+          // 2. Veya listede tek bir web cihazı varsa ve bu tarayıcıdaysak
+          const isOnlyWebDevice = list.length === 1 && dev.platform === 'WEB';
+
+          const isActive = isExactMatch || isOnlyWebDevice;
+
+          // Eşleşen cihazın ID'sini tarayıcıya da sabitleyelim
+          if (isActive && typeof window !== 'undefined' && dev.installationId) {
+            localStorage.setItem('voia_installation_id', dev.installationId);
+          }
+
+          return {
+            ...dev,
+            isActive: isActive,
+          };
+        }).sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
+
+        setDevices(formatted);
 
       } catch (error) {
         console.error("Veriler çekilirken hata:", error);
@@ -152,7 +169,7 @@ export default function ProfilePage() {
     setLoading(true);
 
     if (!preferences.languageId) {
-      showToast('Lütfen bir asistan dili seçin (Eğer seçenek yoksa sisteme dil eklenmelidir).', 'error');
+      showToast('Lütfen bir asistan dili seçin.', 'error');
       setLoading(false);
       return;
     }
@@ -212,7 +229,6 @@ export default function ProfilePage() {
       console.error("Çıkış yapılırken hata oluştu:", error);
     } finally {
       clearAuthStorage();
-      localStorage.removeItem('voia_active_installation_id');
       router.push('/');
     }
   };
@@ -264,8 +280,6 @@ export default function ProfilePage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-[#0f4c3a] dark:bg-[#00BBA7] text-white text-sm font-bold">
           <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,13 +297,11 @@ export default function ProfilePage() {
           aria-modal="true"
           aria-labelledby="delete-modal-title"
         >
-          {/* Overlay */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowDeleteConfirm(false)}
           />
 
-          {/* Modal Kart */}
           <div className="relative w-full max-w-md bg-white dark:bg-[#27272A] rounded-2xl border border-gray-100 dark:border-white/10 shadow-2xl p-8 animate-[fadeInScale_0.18s_ease-out]">
             <button
               onClick={() => setShowDeleteConfirm(false)}
@@ -318,7 +330,6 @@ export default function ProfilePage() {
 
             <div className="flex items-center gap-3">
               <button
-                id="btn-cancel-delete"
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 px-5 py-3 bg-gray-100 dark:bg-[#71717A]/20 hover:bg-gray-200 dark:hover:bg-[#71717A]/30 text-gray-700 dark:text-[#CBD5E1] font-bold rounded-xl text-sm transition-all active:scale-[0.98]"
@@ -326,22 +337,11 @@ export default function ProfilePage() {
                 İptal
               </button>
               <button
-                id="btn-confirm-delete"
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-500/90 dark:hover:bg-red-500 text-white font-bold rounded-xl text-sm transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isDeleting ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                )}
                 {isDeleting ? 'Siliniyor...' : 'Evet, Hesabımı Sil'}
               </button>
             </div>
@@ -358,7 +358,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="space-y-8">
-
         {/* KİŞİSEL BİLGİLER KARTI */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold text-lg mb-6">
@@ -369,7 +368,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex gap-10">
-            {/* Profil Fotoğrafı */}
             <div className="flex flex-col items-center">
               <div className="relative w-32 h-32 rounded-2xl bg-gray-100 dark:bg-[#71717A]/30 border border-gray-200 dark:border-white/10 overflow-hidden mb-3">
                 <img src={avatarSrc} alt="Profil" className="w-full h-full object-cover" />
@@ -399,9 +397,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Form Elemanları */}
             <div className="flex-1 grid grid-cols-2 gap-6">
-              {/* Ad Soyad */}
               <div className="col-span-1">
                 <label className="block text-xs font-bold text-gray-800 dark:text-[#CBD5E1] mb-2">Ad Soyad</label>
                 <input
@@ -412,7 +408,6 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* E-posta */}
               <div className="col-span-1">
                 <label className="block text-xs font-bold text-gray-800 dark:text-[#CBD5E1] mb-2">E-posta Adresi</label>
                 <input
@@ -423,7 +418,6 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* Telefon */}
               <div className="col-span-2 relative">
                 <label className="block text-xs font-bold text-gray-800 dark:text-[#CBD5E1] mb-2">Telefon Numarası</label>
                 <input
@@ -443,7 +437,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* --- YENİ EKLENEN KISIM: SESSİZ SAATLER'E YÖNLENDİRME KARTI --- */}
+        {/* SESSİZ SAATLER'E YÖNLENDİRME KARTI */}
         <Link 
           href="/quiet-hours" 
           className="block bg-white dark:bg-[#27272A] rounded-2xl p-6 border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-md hover:border-teal-100 dark:hover:border-[#00BBA7]/30 transition-all group focus:outline-none"
@@ -477,7 +471,6 @@ export default function ProfilePage() {
             Tercihler
           </div>
 
-          {/* Asistan Dili */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
               Asistan Dili
@@ -489,7 +482,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => setPreferences({ ...preferences, languageId: lang.languageId })}
                   className={`flex items-center px-4 py-2 rounded-xl border text-sm font-medium transition-all
-          ${preferences.languageId === lang.languageId
+                    ${preferences.languageId === lang.languageId
                       ? 'border-[#0f4c3a] text-[#0f4c3a] bg-[#0f4c3a]/5 dark:border-[#00BBA7] dark:text-[#00BBA7] dark:bg-[#00BBA7]/10'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-white/10 dark:text-gray-400 dark:hover:border-white/20'
                     }`}
@@ -506,7 +499,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-8">
-            {/* Bildirim Zamanı */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Bildirim Zamanı</label>
               <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
@@ -525,7 +517,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Arama Hatırlatıcı */}
             <div>
               <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Arama Hatırlatıcı</label>
               <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
@@ -561,7 +552,7 @@ export default function ProfilePage() {
             ) : (
               devices.map((device) => (
                 <div
-                  key={device.deviceId}
+                  key={device.deviceId || device.installationId}
                   className={`flex items-center justify-between p-4 rounded-xl relative overflow-hidden transition-colors group
                     ${device.isActive
                       ? 'border border-teal-100 dark:border-[#00BBA7]/20 bg-teal-50/30 dark:bg-[#00BBA7]/5'
@@ -595,7 +586,7 @@ export default function ProfilePage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {device.isActive
                           ? 'Şu an bu cihazdasınız'
-                          : `Son görülme: ${new Date(device.lastActive).toLocaleDateString('tr-TR')} ${new Date(device.lastActive).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                          : `Son görülme: ${new Date(device.lastActive || device.createdAt).toLocaleDateString('tr-TR')} ${new Date(device.lastActive || device.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
                         }
                       </p>
                     </div>
@@ -649,7 +640,6 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center gap-4">
               <button
-                id="btn-delete-account"
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-500/90 dark:hover:bg-red-500 text-white font-bold rounded-xl text-sm transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
@@ -660,7 +650,6 @@ export default function ProfilePage() {
                 Hesabı Sil
               </button>
               <button
-                id="btn-logout"
                 type="button"
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-[#71717A]/20 hover:bg-gray-200 dark:hover:bg-[#71717A]/30 text-gray-700 dark:text-[#CBD5E1] font-bold rounded-xl text-sm transition-all active:scale-[0.98]"
@@ -693,7 +682,6 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

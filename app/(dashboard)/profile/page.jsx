@@ -11,8 +11,6 @@ const INITIAL_FORM = {
   email: '',
   phone: '',
   language: 'TR',
-  notifTime: '30dk',
-  callTime: 'Aninda',
 };
 
 const formatDeviceName = (deviceName) => {
@@ -65,8 +63,6 @@ export default function ProfilePage() {
 
   const [preferences, setPreferences] = useState({
     languageId: '',
-    defaultPushBefore: 30,
-    defaultCallBefore: 0
   });
 
   useEffect(() => {
@@ -106,22 +102,11 @@ export default function ProfilePage() {
 
           setPreferences({
             languageId: savedLangId || (langs.length > 0 ? langs[0].languageId : ''),
-            defaultPushBefore: settings.defaultPushBefore || 30,
-            defaultCallBefore: settings.defaultCallBefore || 0
           });
-
-          setForm(prev => ({
-            ...prev,
-            notifTime: settings.defaultPushBefore === 60 ? '1saat' : `${settings.defaultPushBefore}dk`,
-            callTime: settings.defaultCallBefore === 0 ? 'Aninda' : `${settings.defaultCallBefore}dk`
-          }));
-        } else {
-          if (langs.length > 0) {
-            setPreferences(prev => ({ ...prev, languageId: langs[0].languageId }));
-          }
+        } else if (langs.length > 0) {
+          setPreferences({ languageId: langs[0].languageId });
         }
 
-        // 4. KULLANICININ BAĞLI CİHAZLARINI ÇEK
         const userDevices = await getDevices();
         const currentInstallationId = typeof window !== 'undefined' 
           ? localStorage.getItem('voia_installation_id') 
@@ -129,15 +114,12 @@ export default function ProfilePage() {
 
         const list = Array.isArray(userDevices) ? userDevices : (userDevices?.data || []);
 
-        const formatted = list.map((dev, idx) => {
-          // 1. Tarayıcıdaki ID ile eşleşiyor mu?
+        const formatted = list.map((dev) => {
           const isExactMatch = Boolean(currentInstallationId && dev.installationId === currentInstallationId);
-          // 2. Veya listede tek bir web cihazı varsa ve bu tarayıcıdaysak
           const isOnlyWebDevice = list.length === 1 && dev.platform === 'WEB';
 
           const isActive = isExactMatch || isOnlyWebDevice;
 
-          // Eşleşen cihazın ID'sini tarayıcıya da sabitleyelim
           if (isActive && typeof window !== 'undefined' && dev.installationId) {
             localStorage.setItem('voia_installation_id', dev.installationId);
           }
@@ -175,16 +157,13 @@ export default function ProfilePage() {
     }
 
     try {
-      const pushMinutes = form.notifTime === '1saat' ? 60 : parseInt(form.notifTime.replace('dk', '')) || 30;
-      const callMinutes = form.callTime === 'Aninda' ? 0 : parseInt(form.callTime.replace('dk', '')) || 0;
-
       const settingsPayload = {
         languageId: preferences.languageId,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        province: "İstanbul",
+        province: userSettings?.province || "İstanbul",
         notificationsEnabled: true,
-        defaultPushBefore: pushMinutes,
-        defaultCallBefore: callMinutes
+        defaultPushBefore: 0,
+        defaultCallBefore: 0
       };
 
       const nameParts = form.name.trim().split(' ');
@@ -257,18 +236,6 @@ export default function ProfilePage() {
     const url = URL.createObjectURL(file);
     setAvatarSrc(url);
   };
-
-  const NOTIF_OPTS = [
-    { key: '15dk', label: '15 dk önce' },
-    { key: '30dk', label: '30 dk önce' },
-    { key: '1saat', label: '1 saat önce' },
-  ];
-
-  const CALL_OPTS = [
-    { key: 'Aninda', label: 'Anında' },
-    { key: '5dk', label: '5 dk önce' },
-    { key: '10dk', label: '10 dk önce' },
-  ];
 
   if (loading) {
     return (
@@ -462,7 +429,7 @@ export default function ProfilePage() {
           </div>
         </Link>
 
-        {/* TERCİHLER KARTI */}
+        {/* TERCİHLER KARTI (SADECE ASİSTAN DİLİ) */}
         <div className="bg-white dark:bg-[#27272A] rounded-2xl p-8 border border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
           <div className="flex items-center text-[#0f4c3a] dark:text-[#00BBA7] font-bold text-lg mb-6">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,7 +438,7 @@ export default function ProfilePage() {
             Tercihler
           </div>
 
-          <div className="mb-6">
+          <div>
             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
               Asistan Dili
             </label>
@@ -480,7 +447,7 @@ export default function ProfilePage() {
                 <button
                   key={lang.languageId}
                   type="button"
-                  onClick={() => setPreferences({ ...preferences, languageId: lang.languageId })}
+                  onClick={() => setPreferences({ languageId: lang.languageId })}
                   className={`flex items-center px-4 py-2 rounded-xl border text-sm font-medium transition-all
                     ${preferences.languageId === lang.languageId
                       ? 'border-[#0f4c3a] text-[#0f4c3a] bg-[#0f4c3a]/5 dark:border-[#00BBA7] dark:text-[#00BBA7] dark:bg-[#00BBA7]/10'
@@ -495,44 +462,6 @@ export default function ProfilePage() {
                   {lang.name} ({lang.code})
                 </button>
               ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Bildirim Zamanı</label>
-              <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
-                {NOTIF_OPTS.map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setForm({ ...form, notifTime: opt.key })}
-                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${form.notifTime === opt.key
-                      ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
-                      : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#CBD5E1] mb-3">Varsayılan Arama Hatırlatıcı</label>
-              <div className="flex bg-gray-50/50 dark:bg-[#1A1A1A]/40 p-1 rounded-xl border border-gray-200 dark:border-white/10">
-                {CALL_OPTS.map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setForm({ ...form, callTime: opt.key })}
-                    className={`flex-1 py-2 text-sm transition-all rounded-lg ${form.callTime === opt.key
-                      ? 'font-bold text-[#0f4c3a] dark:text-[#00BBA7] bg-teal-50 dark:bg-[#00BBA7]/10 border border-teal-100 dark:border-[#00BBA7]/30 shadow-sm'
-                      : 'font-medium text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1]'
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>

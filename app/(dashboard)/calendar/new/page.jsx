@@ -7,26 +7,26 @@ import { createReminder, getLanguages, getUserSettings } from '@/lib/api';
 
 // Backend RepeatType enum değerleri (NONE | DAILY | WEEKLY | MONTHLY)
 const REPEAT_OPTIONS = [
-  { label: 'Tekrarlanmasın', value: 'NONE'    },
-  { label: 'Her Gün',        value: 'DAILY'   },
-  { label: 'Her Hafta',      value: 'WEEKLY'  },
-  { label: 'Her Ay',         value: 'MONTHLY' },
+  { label: 'Tekrarlanmasın', value: 'NONE' },
+  { label: 'Her Gün', value: 'DAILY' },
+  { label: 'Her Hafta', value: 'WEEKLY' },
+  { label: 'Her Ay', value: 'MONTHLY' },
 ];
 
 // Bildirim zamanlama → dakika dönüşümü
 const PUSH_OPTIONS = [
-  { label: 'Zamanında', minutes: 0  },
-  { label: '5 dk',      minutes: 5  },
-  { label: '15 dk',     minutes: 15 },
-  { label: '30 dk',     minutes: 30 },
+  { label: 'Zamanında', minutes: 0 },
+  { label: '5 dk önce', minutes: 5 },
+  { label: '15 dk önce', minutes: 15 },
+  { label: '30 dk önce', minutes: 30 },
 ];
 
 // Sesli arama zamanlama → dakika dönüşümü (undefined = arama yok)
 const CALL_OPTIONS = [
-  { label: 'Yok',       minutes: undefined },
-  { label: 'Zamanında', minutes: 0         },
-  { label: '5 dk',      minutes: 5         },
-  { label: '10 dk',     minutes: 10        },
+  { label: 'Yok', minutes: null },
+  { label: 'Zamanında', minutes: 0 },
+  { label: '5 dk önce', minutes: 5 },
+  { label: '15 dk önce', minutes: 15 },
 ];
 
 export default function NewReminderPage() {
@@ -35,31 +35,31 @@ export default function NewReminderPage() {
   const initialDate = searchParams.get('date') || '';
 
   // Form state
-  const [title, setTitle]               = useState('');
-  const [description, setDescription]   = useState('');
-  const [date, setDate]                 = useState(initialDate);
-  const [time, setTime]                 = useState('');
-  const [repeatType, setRepeatType]     = useState('NONE');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState('');
+  const [repeatType, setRepeatType] = useState('NONE');
   const [isRepeatOpen, setIsRepeatOpen] = useState(false);
-  const [pushMinutes, setPushMinutes]   = useState(0);       // 0 = Zamanında
-  const [callMinutes, setCallMinutes]   = useState(undefined);
+  const [pushMinutes, setPushMinutes] = useState(0);       // 0 = Zamanında
+  const [callMinutes, setCallMinutes] = useState(undefined);
 
   // Dil listesi
   const [loadingLangs, setLoadingLangs] = useState(true);
-  const [isLangOpen, setIsLangOpen]     = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const [selectedLangName, setSelectedLangName] = useState('Yükleniyor...');
 
   // UI state
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
-  const [toast, setToast]       = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const fetchUserLanguage = async () => {
       try {
         setLoadingLangs(true);
         const settings = await getUserSettings();
-        
+
         if (settings?.language?.name) {
           setSelectedLangName(settings.language.name);
         } else if (settings?.languageId) {
@@ -109,10 +109,16 @@ export default function NewReminderPage() {
     const payload = {
       title: title.trim(),
       description: description.trim() || undefined,
-      eventDatetime,
-      repeatType,
-      pushMinutesBefore: typeof pushMinutes === 'number' ? pushMinutes : 0,
+      eventDatetime: new Date(`${date}T${time}:00`).toISOString(),
+      repeatType: repeatType || 'NONE',
+      pushMinutesBefore: Number(pushMinutes), // Sayı (örn: 5)
     };
+
+    if (callMinutes !== null && typeof callMinutes === 'number') {
+      payload.voiceMinutesBefore = Number(callMinutes); // Sayı (örn: 5)
+    }
+
+    await createReminder(payload);
 
     if (callMinutes !== undefined && typeof callMinutes === 'number') {
       payload.voiceMinutesBefore = callMinutes;
@@ -176,8 +182,8 @@ export default function NewReminderPage() {
                 <label className="block text-[11px] font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider">
                   ASİSTAN DİLİ
                 </label>
-                <Link 
-                  href="/profile" 
+                <Link
+                  href="/profile"
                   className="text-[11px] font-semibold text-[#0f4c3a] dark:text-[#00BBA7] hover:underline"
                 >
                   Ayarlardan Değiştir →
@@ -211,11 +217,10 @@ export default function NewReminderPage() {
                       <div
                         key={opt.value}
                         onClick={() => { setRepeatType(opt.value); setIsRepeatOpen(false); }}
-                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${
-                          repeatType === opt.value
-                            ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
-                            : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
-                        }`}
+                        className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors flex items-center justify-between ${repeatType === opt.value
+                          ? 'bg-teal-50 dark:bg-[#00BBA7]/10 text-[#0f4c3a] dark:text-[#00BBA7]'
+                          : 'text-gray-700 dark:text-[#CBD5E1] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
+                          }`}
                       >
                         {opt.label}
                         {repeatType === opt.value && (
@@ -275,23 +280,24 @@ export default function NewReminderPage() {
             />
           </div>
 
-          {/* Zamanlama Butonları */}
-          <div className="grid grid-cols-2 gap-6 pt-2">
+          {/* Zamanlama Seçenekleri */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+
+            {/* Bildirim Zamanlaması */}
             <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Bildirim Zamanlaması
+              <label className="block text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-3">
+                BİLDİRİM ZAMANLAMASI
               </label>
-              <div className="flex gap-2">
+              <div className="flex p-1 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-2xl border border-gray-100 dark:border-white/5 gap-1.5">
                 {PUSH_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => setPushMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      pushMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${pushMinutes === opt.minutes
+                      ? 'bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm border border-teal-100 dark:border-[#00BBA7]/30'
+                      : 'text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1] border border-transparent'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -299,27 +305,28 @@ export default function NewReminderPage() {
               </div>
             </div>
 
+            {/* Sesli Arama Zamanlaması */}
             <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-[#F8FAFC] mb-3">
-                Sesli Arama Zamanlaması
+              <label className="block text-xs font-bold text-[#0f4c3a] dark:text-[#00BBA7] uppercase tracking-wider mb-3">
+                SESLİ ARAMA ZAMANLAMASI
               </label>
-              <div className="flex gap-2">
+              <div className="flex p-1 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-2xl border border-gray-100 dark:border-white/5 gap-1.5">
                 {CALL_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => setCallMinutes(opt.minutes)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                      callMinutes === opt.minutes
-                        ? 'bg-teal-50 dark:bg-[#00BBA7]/10 border-teal-300 dark:border-[#00BBA7]/50 text-[#0f4c3a] dark:text-[#00BBA7]'
-                        : 'bg-gray-100 dark:bg-[#71717A]/20 border-transparent text-gray-500 dark:text-[#CBD5E1] hover:bg-gray-200 dark:hover:bg-[#71717A]/40'
-                    }`}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${callMinutes === opt.minutes
+                      ? 'bg-white dark:bg-[#27272A] text-[#0f4c3a] dark:text-[#00BBA7] shadow-sm border border-teal-100 dark:border-[#00BBA7]/30'
+                      : 'text-gray-500 dark:text-[#71717A] hover:text-gray-800 dark:hover:text-[#CBD5E1] border border-transparent'
+                      }`}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
+
           </div>
 
           {/* Alt Butonlar */}

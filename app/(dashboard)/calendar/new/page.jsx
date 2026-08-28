@@ -26,7 +26,7 @@ const CALL_OPTIONS = [
   { label: 'Yok', minutes: null },
   { label: 'Zamanında', minutes: 0 },
   { label: '5 dk önce', minutes: 5 },
-  { label: '10 dk önce', minutes: 15 },
+  { label: '15 dk önce', minutes: 15 },
 ];
 
 export default function NewReminderPage() {
